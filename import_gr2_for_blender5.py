@@ -11,27 +11,31 @@
 # 18/10/2025
 #
 
-mesh_only = True
+# NOTE: FAILED TO GET METADATA: Expecting value: line 1 column 1 (char 0)
+# This: | json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+# probably means you added print statements in the exe.
 
-if "mesh_only":
+armaturepath = None
     # mesh + armature in same GR2
-    file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\Resources\Proxy_INTDEV_A.GR2"
-    #file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Rig\INTDEV_Rig_DFLT_IDLE_Random_Peace_01.GR2"
+    #file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\Resources\Proxy_INTDEV_A.GR2"
     #file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2"
-    armaturepath = None
-else:
-    # animation + skeleton separate
-    file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Rig\INTDEV_Rig_DFLT_IDLE_Random_Peace_01.GR2"
-    armaturepath = r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2"
+
+#file_to_import = r"F:\test\gltf_tests\rpremixed anim and skel as skel to mesh.gr2" # the name lies, it's just intdev cin.
+#file_to_import = r"F:\test\gltf_tests\randompeaceintdev defaults copyskel.gr2" ## skel + armaturem, no mesh
+file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2"
+
+#file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Rig\INTDEV_Rig_DFLT_IDLE_Random_Peace_01.GR2"
+#armaturepath = r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2"
 
 version = "0.3.2"
 
-mode = "metadata only"  # other options: "all", "metadata only"
+mode = "all"#"metadata only"  # other options: "all", "metadata only"
 metadata = True
+
 
 print("\n" *20)
 import bpy
-#from addon_utils import check, enable
+from addon_utils import check, enable
 import re
 import subprocess
 import tempfile
@@ -39,11 +43,10 @@ from pathlib import Path
 
 use_existing_collection = True
 custom_bones_on = True
-armaturepath = None
 
 divineexe = r"F:\Blender\Addons etc\Packed\Tools\Divine.exe"
 divinedir = r"F:\Blender\Addons etc\Packed\Tools"
-rootreader = r"D:\Git_Repos\GR2_importer_for_blender_5\rootreader\rootreader\bin\Debug\net8.0\rootreader.exe"
+rootreader = r"D:\Git_Repos\GR2_importer_for_blender_5\rootreader\bin\Debug\net8.0\rootreader.exe"
 
 #--- Check required files exist. --- #
 for path in [divineexe, rootreader]:
@@ -60,13 +63,13 @@ def is_console_visible():
     hwnd = ctypes.windll.kernel32.GetConsoleWindow()
     return hwnd != 0 and ctypes.windll.user32.IsWindowVisible(hwnd)
     
-#if not is_console_visible():
-#    bpy.ops.wm.console_toggle()
+if not is_console_visible():
+    bpy.ops.wm.console_toggle()
 
 # Make sure the native GLTF importer is enabled for later. # 
-#default, enabled = check("io_scene_gltf2")
-#if not enabled:
-#    enable("io_scene_gltf2", default_set=True, persistent=True)
+default, enabled = check("io_scene_gltf2")
+if not enabled:
+    enable("io_scene_gltf2", default_set=True, persistent=True)
 
 def get_filename(filename):
     directory, filepath = filename.rsplit("\\", 1)
@@ -128,7 +131,7 @@ def metadata_func(file_to_import):
     except Exception as e:
         print(f"FAILED TO GET METADATA: {e}")
 
-def attemptimport(filepath, armaturepath=None):
+def attemptimport(filepath, armaturepath):
 
     origname = filepath
     def import_gltf(filepath, directory):
@@ -142,24 +145,28 @@ def attemptimport(filepath, armaturepath=None):
 
         temppath = get_temppath()
 
-        def add_armature(armaturepath):
-
+        def add_armature(filepath, armaturepath):
+            print("Adding armature to animation. Armature metadata:: ")
             temppath = get_temppath()
-            if armaturepath is not None:
+            if armaturepath != None:
                 if not Path(armaturepath).is_file():
                     print("Provided armature path is not a valid file. Ignoring.")
                     armaturepath = None
                 try:
+                    get_metadata(armaturepath)
+                    print(f"filepath: {filepath}, armaturepath: {armaturepath}, temppath: {temppath}")
                     print("Divine CLI command for GR2 generation with new skeleton:")
                     print(f'"{divineexe}" --loglevel all -g bg3 -s "{filepath}" -d "{temppath}.gr2" -i gr2 -o gr2 -a convert-model -e conform-copy conform-path "{armaturepath}"')
                     subprocess.run(f'"{divineexe}" --loglevel all -g bg3 -s "{filepath}" -d "{temppath}.gr2" -i gr2 -o gr2 -a convert-model -e conform-copy --conform-path "{armaturepath}"')
                 except Exception as e:
                     print(f"Failed to generate GR2 with new skeleton. Returning early. Reason: {e}")
                     return None
+            get_metadata(f"{temppath}.gr2")
             return f"{temppath}.gr2"
 
         def makedae(filepath, temppath):
             temppath = str(temppath)
+            #get_metadata(temppath)
             print(f"Divine CLI command for DAE generation:")
             print(f'"{divineexe}" --loglevel all -g bg3 -s {filepath} -d {temppath} -i gr2 -o dae -a convert-model -e flip-uvs')
             try:
@@ -169,21 +176,20 @@ def attemptimport(filepath, armaturepath=None):
                 return None
 
             print("DAE file generated. Moving to generate GLTF.")
-
-            return temppath + ".dae"
+            return temppath
 
         def makegltf(temppath, fromtype):
             if fromtype.lower() in str(temppath).lower():
                 pass
             else:
-                temppath = str(temppath) + "." + fromtype
-            temppath2 = str(get_temppath()) + ".gltf"
+                temppath = str(temppath)
+            temppath2 = str(get_temppath())
             
             print(f"Divine CLI command for GLTF generation:")
-            print(f'"{divineexe}" --loglevel warn -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o gltf -a convert-model -e flip-uvs')
+            print(f'"{divineexe}" --loglevel all -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o glb -a convert-model -e flip-uvs')
             print()
             try:
-                subprocess.run(f'"{divineexe}" --loglevel warn -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o gltf -a convert-model -e flip-uvs')
+                subprocess.run(f'"{divineexe}" --loglevel all -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o glb -a convert-model -e flip-uvs')
                 return temppath2
             except Exception as e:
                 print(f"Failed to generate GLTF from {fromtype} with Divine. Returning early. Reason: {e}")
@@ -192,8 +198,14 @@ def attemptimport(filepath, armaturepath=None):
         if ".gltf" in str(filepath).lower():
             return filepath
 
-        if armaturepath is not None:
-            new_filepath = add_armature(armaturepath)
+        if armaturepath != None:
+            print("Armaturepath exists.")
+            print("Shouldn't be based on this though. Should be based on the metadata.")
+            print("Armaturepath metadata::    ")
+            get_metadata(armaturepath)
+            print("Filepath metadata:: ")
+            get_metadata(filepath)
+            new_filepath = add_armature(filepath, armaturepath)
             if new_filepath is None:
                 print(("Failed to add armature, returning early."))
                 return None
@@ -205,11 +217,11 @@ def attemptimport(filepath, armaturepath=None):
             get_metadata(filepath)
 
         print()
-        if armaturepath is None:
-            gltf = makegltf(filepath, "gr2")
-            if gltf is not None:
-                print("GR2 to GLTF complete.")
-                return gltf
+        #if armaturepath is None:
+        #    gltf = makegltf(filepath, "gr2")
+        #    if gltf is not None:
+        #        print("GR2 to GLTF complete.")
+        #        return gltf
 
         dae = makedae(filepath, temppath)
         if dae:
@@ -246,7 +258,11 @@ def attemptimport(filepath, armaturepath=None):
     temppath = try_divine(filepath, armaturepath)
     print("Have finished in try divine.")
     print("Temppath: ", temppath)
-    directory, filename = get_filename(temppath)
+    
+    temppath2 = temppath + ".glb"
+    if not Path(temppath2).is_file():
+        temppath2 = temppath
+    directory, filename = get_filename(temppath2)
     import_gltf(filename, directory)
 
     new_objects = [obj for obj in bpy.context.scene.objects if obj not in existing_objects]
@@ -308,7 +324,7 @@ def cleanup(new_objects, trimmed_name):
 
                 print(f"context: {context}")
                 for bone in context:
-                    print(f"Bone: {bone}, head: {bone.head}, tail: {bone.tail}")
+                    #print(f"Bone: {bone}, head: {bone.head}, tail: {bone.tail}")
                     children = []
                     if not bone_dict.get(bone.name):
                         bone_dict[bone.name] = {}
@@ -353,7 +369,7 @@ def cleanup(new_objects, trimmed_name):
                 if counter != len(nomovement):
                     print(f"Total of {counter} bones, {len(nomovement)} did not move. `({nomovement})`")   
                     for bone in nomovement:
-                        print(f"Bone: {bone}")
+                        #print(f"Bone: {bone}")
                         parent = bone_dict[bone].get("parent")
                         if not parent:
                             continue
@@ -362,7 +378,7 @@ def cleanup(new_objects, trimmed_name):
                         parentnewtail = bone_dict[parent].get("new_tail_pos")
                         vec_before = parenttail - parenthead
                         vec_after  = parentnewtail  - parenthead
-                        print(f"bone: {bone}, tail, head: {parenttail}, {parenthead}, newtail, head: {parentnewtail}, {parenthead}, vecbefore: {vec_before}, vecafter: {vec_after}")
+                        #print(f"bone: {bone}, tail, head: {parenttail}, {parenthead}, newtail, head: {parentnewtail}, {parenthead}, vecbefore: {vec_before}, vecafter: {vec_after}")
                         
                         if vec_after.length == 0:
                             grandparent = bone_dict[parent].get("parent")
@@ -376,8 +392,8 @@ def cleanup(new_objects, trimmed_name):
                         angle = vec_before.angle(vec_after)
                         axis = vec_before.cross(vec_after)
                         axis.normalize()
-                        print(f"Angle change: {angle}")
-                        print(f"axis: {axis}")
+                        #print(f"Angle change: {angle}")
+                        #print(f"axis: {axis}")
                         
                         childhead = bone_dict[bone].get("head_pos")
                         childtail = bone_dict[bone].get("tail_pos")
@@ -396,7 +412,7 @@ def cleanup(new_objects, trimmed_name):
                     
                 for name, entry in bone_dict.items():
                     roll = entry.get("roll")
-                    print(f"entry: {name}, {entry}, roll: ", roll)
+                    #print(f"entry: {name}, {entry}, roll: ", roll)
                     if float(roll) < 0:
                         roll = float(roll) * -1
                         bone = context.get(name)
@@ -404,7 +420,7 @@ def cleanup(new_objects, trimmed_name):
                             bone.roll = roll
                 bpy.ops.object.mode_set(mode='OBJECT')
 
-        fix_bone_orientation()
+            fix_bone_orientation()
 
     for ico in oldicos: # delete here to stop structRNA errors if they're deleted before all objs have been observes.
         bpy.data.objects.remove(ico,do_unlink=True)  ### Only needed if there's more that one option. Otherwise it deletes the one it just created and errors.
