@@ -31,7 +31,7 @@ version = "0.3.28" # static model import is still working with the refactor. Com
 
 mode = "all"#"metadata only"  # other options: "all", "metadata only"
 metadata = False
-
+specified_collection = "intdev_cin_20_10_25_02"
 
 print("\n" *20)
 import bpy
@@ -294,7 +294,7 @@ def attemptimport2(filepath, armaturepath):
     if use_existing_collection:
         test = bpy.data.collections.get(trimmed_name)
         if test:
-            print("There is already a collection with this name.")
+            print(f"There is already a collection with this name: {trimmed_name}.")
             collection = test
 
     if not use_existing_collection or not collection:
@@ -377,30 +377,68 @@ def convertto_GLTF(temppath, fromtype):
         print(f"Failed to generate GLTF from {fromtype} with Divine. Returning early. Reason: {e}")
         return None
     
-def setup_for_import(filename):
+def setup_for_import(filepath):
     
+    _, filename, _ = get_filename_ext(filepath)
     collection = None
 
-    trimmed_name = filename.split(".")[0]
+    if specified_collection:
+        trimmed_name = specified_collection
+        
+    else:
+        trimmed_name = filename.split(".")[0]
 
-    if use_existing_collection:
+    if use_existing_collection: ## Add the option to import to selected/active collection, and/or named collection in the UI once it exists.
         test = bpy.data.collections.get(trimmed_name)
         if test:
-            print("There is already a collection with this name.")
+            print(f"There is already a collection with this name: {trimmed_name}.")
             collection = test
 
     if not use_existing_collection or not collection:
-            collection = bpy.data.collections.new(trimmed_name)
+        collection = bpy.data.collections.new(trimmed_name)
 
     try:
-        bpy.context.scene.collection.children.link(collection)
+        bpy.context.scene.collection.children.link(collection)  ## NOTE: Will fail if the collection is excluded from the view layer. Even if it passed test.
     except:
+        vl_collections = bpy.context.view_layer.layer_collection.children ### Okay. This needs a cleanup but works, at least in this specific case. If the named one is not excluded, it uses that. If it is excluded (should also check for visibility potentially, too), it makes a new collection and uses that.
+        for coll in vl_collections:
+            if coll.name == collection.name:
+                print("Confirmed: collection exists in view layer.")
+                if coll.exclude == True:
+                    print("Collection excluded. Creating new collection.")
+                    collection = bpy.data.collections.new(trimmed_name)
+                    bpy.context.scene.collection.children.link(collection)
+        else:
+            print("Really failed this time. Apparently the layer collection exists in the  view layer but linking still failed.")
         pass
+    # This failing doesn't mean we need to create a new collection, it may already be linked or have some other benign cause. But, we still need to allocate a collection, or it just gets dumped on main.
 
-    layer_collection = bpy.context.view_layer.layer_collection.children[collection.name]
+#        print("Failed to imported objects to the collection, potentially excluded from view layer'.")
+        # I don't want to try to force it to reenable the collection. Maybe that'd be a UI option but not a hardcoded default.
+        # So instead... 
+#        print(f"Existing collection `{trimmed_name}` unavailable: creating a new collection with a suffix.")
+#        try:   
+#            collection = bpy.data.collections.new(trimmed_name)
+#            bpy.context.scene.collection.children.link(collection) # For now, this creates a new one each time. Should it default to the earliest variant (by suffix)? I guess most people don't import their models 100 times per blend file so maybe it does't matter.
+#            # I really do want to just name the collection for testing though. Will add that.
+#        except Exception as e:
+#            print(f"Failed to create new collection with suffix as well: {e}")
+
+    layer_collection = bpy.context.view_layer.layer_collection.children[collection.name] ## this will fail if the collection isn't linked to the view layer.
     bpy.context.view_layer.active_layer_collection = layer_collection
 
     existing_objects = set(bpy.context.scene.objects)
+
+    ### import from in here?
+
+#    directory, filename, _ = get_filename_ext(temppath2)
+#    import_gltf(filename, directory)##
+
+#    new_objects = [obj for obj in bpy.context.scene.objects if obj not in existing_objects]
+#    if new_objects == None:
+#        print("GLTF import failed, no new objects imported to scene.")
+#        return None, trimmed_name
+#    return new_objects, trimmed_name
 
     return existing_objects
 
@@ -655,7 +693,7 @@ def main():
     converted = attempt_conversion(file_to_import, armaturepath)
     if converted:
         directory, filename, _ = get_filename_ext(converted)
-        existing_objects = setup_for_import(filename)
+        existing_objects = setup_for_import(file_to_import)
         imported = import_gltf(filename, directory, existing_objects)
 
     if imported:
