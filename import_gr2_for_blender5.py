@@ -15,23 +15,62 @@
 # This: | json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
 # probably means you added print statements in the exe.
 
+##Testing mesh/armature/animation combinations.##
+
+# stage 1:
+#   input file: INTDEV_Rig_DFLT_IDLE_Random_Peace_01.GR2
+#   armaturepath: INTDEV_CIN.GR2
+#   output:
+#    F:\test\gltf_tests\random_peace_to_intdev.gr2 == Internal filename:  C:/Users/Merel.Beers/Perforce/beers_merelfw4main/ASSETS/Art/GUSTAV/Data/Public/Shared/Assets/Characters/_Anims/_Creatures/Intellect_Devourer/INTDEV_Rig/INTDEV_Rig_DFLT_IDLE_Random_Peace_01.ma
+                            #Metadata - Meshes: 0, Armatures: 1, Animations: 1
+
+# stage 2:
+#   input file: INTDEV_CIN.GR2
+#   armaturepath: F:\test\gltf_tests\random_peace_to_intdev.gr2
+#   output:
+#    F:\test\gltf_tests\random_peace_to_intdev_then_intdev_cin_merged_with_the_combined.gr2 == Internal filename:  c:\FW4\ASSETS\Art\GUSTAV\Data\Public\Shared\Assets\Characters\_Rigs\_Creatures\Intellect_Devourer\INTDEV_Rig_Skinning.ma
+#                           Metadata - Meshes: 5, Armatures: 1, Animations: 0
+
+#stage 3:
+#    this time, same input/armature files, but with 'copy skeleton' on:
+#        F:\test\gltf_tests\random_peace_to_intdev_then_intdev_cin_merged_with_the_combined_copy_skel.gr2
+
+#  input file: F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2 (mesh, armature)
+
+#So I can't get metadata if it's not GR2. So I can't test the DAE files in the same way I can the GR2s. Need to make those checks contitional.
+
 armaturepath = None
     # mesh + armature in same GR2
-    #file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\Resources\Proxy_INTDEV_A.GR2"
-    #file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2"
+#file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\Resources\Proxy_INTDEV_A.GR2"
 
 #file_to_import = r"F:\test\gltf_tests\rpremixed anim and skel as skel to mesh.gr2" # the name lies, it's just intdev cin.
-#file_to_import = r"F:\test\gltf_tests\randompeaceintdev defaults copyskel.gr2" ## skel + armaturem, no mesh
-file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2"
+#file_to_import = r"F:\test\gltf_tests\randompeaceintdev defaults copyskel.gr2" ## skel +  animation, no mesh
+#file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2"
 
-#file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Rig\INTDEV_Rig_DFLT_IDLE_Random_Peace_01.GR2"
+#file_to_import = r"F:\test\gltf_tests\random_peace_to_intdev_then_intdev_cin_merged_with_the_combined_copy_skel.gr2"
+#file_to_import = r"F:\test\gltf_tests\random_peace_to_intdev_then_intdev_cin_merged_with_the_combined.gr2" # skel + anim, no mesh, made in stage 2 of testing.
+#file_to_import = r"F:\test\gltf_tests\random_peace_with_intdev_cin.gr2" # done in converterapp, random peace as input file, intdev cin as armature. copy skeleton from and copy skeleton both on. Everyting else at defaults.
+#           1 armature, 1 animation, 0 meshes.
+
+#file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\OwlBear\OWLBEAR_Cub_Rig\_Construction\Owlbear_Cub_Rig_DFLT_CINE_Curious_HeadTilt_01.GR2" ## head tilt animation
+#armaturepath = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\OwlBear\OWLBEAR_Cub_Base.GR2"
+
+#file_to_import = r"F:\test\gltf_tests\owlbear_mesh.dae"
+file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Rig\INTDEV_Rig_DFLT_IDLE_Random_Peace_01.GR2"
+armaturepath = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2"
+
 #armaturepath = r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2"
 
-version = "0.3.28" # static model import is still working with the refactor. Commiting this before I inevitably break it again.
+version = "0.4" # animations can now be imported. ::TODO: potentially automate parentage of imported anim + mesh pairings.
+#                                                          :: eg: "Animation file: ___", "Armature file: _____", "Mesh file: _______" and then combine them. 
+#                                                            Also the ability to combine existing parts. If i have a good mesh body, let me apply the skeleton to it in some way. Previously Iv'e had to do it with retargeting but maybe I can find a better way now, idk.
+#                               If not any of that at least I can just set the collection. Maybe if a skeleton obj is specified, pick that collection automatically. That'd be nice. So if I'm
+            #                       importing animations for the Mindflayer, and have a mindflayer model already set up, I can tell it 'this is the model I'm using' and either have it allocate the actions to that figure, 
+            #                           some level of retargeting, or simply put it into the same collection so I can do the rest myself more conveniently.
 
 mode = "all"#"metadata only"  # other options: "all", "metadata only"
 metadata = False
-specified_collection = "intdev_cin_20_10_25_02"
+specified_collection = "intdev_with_proper_skel"#IDLE_Random_Peace_01_20_10_25_02"
 
 print("\n" *20)
 import bpy
@@ -40,7 +79,6 @@ import re
 import subprocess
 import tempfile
 from pathlib import Path
-
 
 use_existing_collection = True
 custom_bones_on = True
@@ -55,7 +93,9 @@ status_definitions = {
     2: "animation only, needs armature to work (default for animated models)",
     3: "animation only GR2, armature file provided.",
     4: "armature + animation (merged) (currently cannot be imported due to lack of mesh)",
-    5: "mesh, armature, animation (fully combined.)"# (Potentially possible but not necessarily desirable in all circumstances)"
+    5: "mesh, armature, animation (fully combined.)",# (Potentially possible but not necessarily desirable in all circumstances)"
+    6: "no metadata results but is .dae filetype",
+    7: "armature only"
 }
 
 #--- Check required files exist. --- #
@@ -141,6 +181,10 @@ def get_metadata(filepath):
 
 def metadata_func(input_file, armaturepath=None):
 
+    if input_file == armaturepath:
+        print("Testing armature for metadata:")
+        
+
     # this should be broken up into multiple parts. I'm checking the armaturepath each time, I should just make that a bool and have the input file be the one I'm testing. Sounds better.
 
     # Check that both files exists before proceeding.
@@ -159,14 +203,20 @@ def metadata_func(input_file, armaturepath=None):
     # 1 = armature + mesh (default for static models)
     # 2 = animation only, needs armature to work (default for animated models)
     # 3 = animation only GR2, armature file provided.
+
     # 4 = armature + animation (merged) (currently cannot be imported due to lack of mesh)
     # 5 = mesh, armature, animation (fully combined.) (Potentially possible but not necessarily desirable in all circumstances)
+    # 6 = no results but is .dae filetype
+    # 7 = armature only
 
     try:
         meshes, armatures, animations = get_metadata(input_file)
         
         if meshes is None and armatures is None and animations is None:
-            print("Failed to get metadata from GR2 file. Aborting import.")
+            if ".dae" in str(input_file).lower():
+                print("DAE file detected, cannot get metadata but assuming valid for import.")
+                return 6
+            print("No reported mesh, armature or animation; cannot read metadata.")
             return 0
         print(f"Metadata - Meshes: {meshes}, Armatures: {armatures}, Animations: {animations}")
 
@@ -181,172 +231,37 @@ def metadata_func(input_file, armaturepath=None):
             return 4
         if animations > 0 and armatures > 0 and meshes > 0:
             return 5
+        if armatures > 0 and animations == 0 and meshes == 0:
+            return 7
 
     except Exception as e:
         print(f"FAILED TO GET METADATA: {e}")
-
-def attemptimport2(filepath, armaturepath):
-
-    origname = filepath
-
-    def import_gltf(filepath, directory):
-        try:
-            bpy.ops.import_scene.gltf(filepath=filepath, directory=directory, files=[{"name":filepath}], loglevel=20)
-        except Exception as e:
-            print(f"GLTF import failed: {e}")
-            return None
-
-    def try_divine(filepath, armaturepath):
-
-        temppath = get_temppath()
-
-        def conformto_armature(filepath, armaturepath):
-            print("Adding armature to animation. Armature metadata:: ")
-            temppath = get_temppath()
-            if armaturepath != None:
-                if not Path(armaturepath).is_file():
-                    print("Provided armature path is not a valid file. Ignoring.")
-                    armaturepath = None
-                try:
-                    get_metadata(armaturepath)
-                    print(f"filepath: {filepath}, armaturepath: {armaturepath}, temppath: {temppath}")
-                    print("Divine CLI command for GR2 generation with new skeleton:")
-                    print(f'"{divineexe}" --loglevel all -g bg3 -s "{filepath}" -d "{temppath}.gr2" -i gr2 -o gr2 -a convert-model -e conform-copy conform-path "{armaturepath}"')
-                    subprocess.run(f'"{divineexe}" --loglevel all -g bg3 -s "{filepath}" -d "{temppath}.gr2" -i gr2 -o gr2 -a convert-model -e conform-copy --conform-path "{armaturepath}"')
-                except Exception as e:
-                    print(f"Failed to generate GR2 with new skeleton. Returning early. Reason: {e}")
-                    return None
-            get_metadata(f"{temppath}.gr2")
-            return f"{temppath}.gr2"
-
-        def convertto_DAE(filepath, temppath):
-            temppath = str(temppath)
-            #get_metadata(temppath)
-            print(f"Divine CLI command for DAE generation:")
-            print(f'"{divineexe}" --loglevel all -g bg3 -s {filepath} -d {temppath} -i gr2 -o dae -a convert-model -e flip-uvs')
-            try:
-                    subprocess.run(f'"{divineexe}" --loglevel all -g bg3 -s "{filepath}" -d "{temppath}" -i gr2 -o dae -a convert-model -e flip-uvs')
-            except Exception as e:
-                print(f"Failed to generate DAE with Divine. Returning early. Reason: {e}")
-                return None
-
-            print("DAE file generated. Moving to generate GLTF.")
-            return temppath
-
-        def convertto_GLTF(temppath, fromtype):
-            if fromtype.lower() in str(temppath).lower():
-                pass
-            else:
-                temppath = str(temppath)
-            temppath2 = str(get_temppath())
-            
-            print(f"Divine CLI command for GLTF generation:")
-            print(f'"{divineexe}" --loglevel all -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o glb -a convert-model -e flip-uvs')
-            print()
-            try:
-                subprocess.run(f'"{divineexe}" --loglevel all -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o glb -a convert-model -e flip-uvs')
-                return temppath2
-            except Exception as e:
-                print(f"Failed to generate GLTF from {fromtype} with Divine. Returning early. Reason: {e}")
-                return None        
-        
-        if ".gltf" in str(filepath).lower():
-            return filepath
-
-        if armaturepath != None:
-            print("Armaturepath exists.")
-            print("Shouldn't be based on this though. Should be based on the metadata.")
-            print("Armaturepath metadata::    ")
-            get_metadata(armaturepath)
-            print("Filepath metadata:: ")
-            get_metadata(filepath)
-            new_filepath = conformto_armature(filepath, armaturepath)
-            if new_filepath is None:
-                print(("Failed to add armature, returning early."))
-                return None
-            else:
-                print("Armature added successfully.")
-                filepath = new_filepath
-                
-        if "gr2" in str(filepath).lower():
-            get_metadata(filepath)
-
-        print()
-        #if armaturepath is None:
-        #    gltf = convertto_GLTF(filepath, "gr2")
-        #    if gltf is not None:
-        #        print("GR2 to GLTF complete.")
-        #        return gltf
-
-        dae = convertto_DAE(filepath, temppath)
-        if dae:
-            gltf = convertto_GLTF(dae, "dae")
-            if gltf:
-                print("GLTF made successfully.")
-                return gltf
-
-
-    collection = None
-
-    _, filename, _ = get_filename_ext(origname)
-    trimmed_name = filename.split(".")[0]
-
-    if use_existing_collection:
-        test = bpy.data.collections.get(trimmed_name)
-        if test:
-            print(f"There is already a collection with this name: {trimmed_name}.")
-            collection = test
-
-    if not use_existing_collection or not collection:
-            collection = bpy.data.collections.new(trimmed_name)
-
-    try:
-        bpy.context.scene.collection.children.link(collection)
-    except:
-        pass
-
-    layer_collection = bpy.context.view_layer.layer_collection.children[collection.name]
-    bpy.context.view_layer.active_layer_collection = layer_collection
-
-    existing_objects = set(bpy.context.scene.objects)
-
-    temppath = try_divine(filepath, armaturepath)
-    print("Have finished in try divine.")
-    print("Temppath: ", temppath)
-    
-    temppath2 = temppath + ".glb"
-    if not Path(temppath2).is_file():
-        temppath2 = temppath
-    directory, filename, _ = get_filename_ext(temppath2)
-    import_gltf(filename, directory)
-
-    new_objects = [obj for obj in bpy.context.scene.objects if obj not in existing_objects]
-    if new_objects == None:
-        print("GLTF import failed, no new objects imported to scene.")
-        return None, trimmed_name
-    return new_objects, trimmed_name
 
 #### IMPORT HELPERS ####
 
 def conformto_armature(filepath, armaturepath):
 
-    # Not sure if this should be outputting GR2 here, or DAE (or GLB). For now, GR2.
-    newfile_ext = ".gr2"
+    ## Changed this to DAE on a whim. Not sure if it's necessary or not, will test more tomorrow.
+    newfile_ext = "dae"
     if armaturepath != None:
         try:
-            print("Metadata for armaturepath: (should be skeleton only) ")
-            get_metadata(armaturepath)
+            print("Metadata for armaturepath: (must contain skeleton)")
+            status = metadata_func(armaturepath, armaturepath)
+            print(f"Status {status}: `{status_definitions.get(status)}`")
+            if status not in [1,4,5,7]:
+                print("Provided armature path does not contain a skeleton. Aborting conform process.")
+                return None
             print()
             temppath = get_temppath()
             print(f"filepath: {filepath}, armaturepath: {armaturepath}, temppath: {temppath}")
             print("Divine CLI command for GR2 generation with new skeleton:")
-            print(f'"{divineexe}" --loglevel all -g bg3 -s "{filepath}" -d "{temppath}{newfile_ext}" -i gr2 -o gr2 -a convert-model -e conform-copy conform-path "{armaturepath}"')
-            subprocess.run(f'"{divineexe}" --loglevel all -g bg3 -s "{filepath}" -d "{temppath}{newfile_ext}" -i gr2 -o gr2 -a convert-model -e conform-copy --conform-path "{armaturepath}"')
+            print(f'"{divineexe}" --loglevel all -g bg3 -s "{filepath}" -d "{temppath}.{newfile_ext}" -i gr2 -o {newfile_ext} -a convert-model -e conform-copy conform-path "{armaturepath}"')
+            subprocess.run(f'"{divineexe}" --loglevel all -g bg3 -s "{filepath}" -d "{temppath}.{newfile_ext}" -i gr2 -o {newfile_ext} -a convert-model -e conform-copy --conform-path "{armaturepath}"')
         except Exception as e:
             print(f"Failed to generate GR2 with new skeleton. Returning early. Reason: {e}")
             return None
     
-    return f"{temppath}.gr2" ## Not sure if this should be ending with GR2, it often omits its own temp file extensions.
+    return f"{temppath}.{newfile_ext}" ## Not sure if this should be ending with GR2, it often omits its own temp file extensions.
 
 def convertto_DAE(filepath, temppath):
     temppath = str(temppath)
@@ -366,6 +281,9 @@ def convertto_GLTF(temppath, fromtype):
     else:
         temppath = str(temppath)
     temppath2 = str(get_temppath())
+
+    if "." in fromtype:
+        fromtype = fromtype.replace(".", "")
     
     print(f"Divine CLI command for GLTF generation:")
     print(f'"{divineexe}" --loglevel all -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o glb -a convert-model -e flip-uvs')
@@ -376,7 +294,39 @@ def convertto_GLTF(temppath, fromtype):
     except Exception as e:
         print(f"Failed to generate GLTF from {fromtype} with Divine. Returning early. Reason: {e}")
         return None
-    
+
+def GR2_to_gltf(filepath, ext):
+    dae_path = convertto_DAE(filepath, ext)
+    if dae_path is not None and check_file_exists("dae conversion", dae_path):
+        print("New metadata check after DAE conversion:")
+        status = metadata_func(filepath, armaturepath)
+        print(f"Status {status}: `{status_definitions.get(status)}`")
+        gltf_path = convertto_GLTF(dae_path, "dae")
+        if gltf_path is not None and check_file_exists("gltf conversion from dae", gltf_path):
+            print("GLTF conversion from DAE successful.")
+            status = metadata_func(filepath, armaturepath)
+            print(f"Status {status}: `{status_definitions.get(status)}`")
+            return gltf_path
+        print("GLTF conversion from DAE failed. Aborting import.")
+        return None
+
+def import_gltf(filename, directory, existing_objects):
+
+    filename = filename + ".glb" if not filename.lower().endswith((".gltf", ".glb")) else filename
+    print("filepath, directory in import_gltf: ", filename, directory)
+    try:
+        bpy.ops.import_scene.gltf(filepath=filename, directory=directory, files=[{"name":filename}], loglevel=20)
+    except Exception as e:
+        print(f"GLTF import failed: {e}")
+        return None
+
+    new_objects = [obj for obj in bpy.context.scene.objects if obj not in existing_objects]
+    if new_objects == None:
+        print("GLTF import failed, no new objects imported to scene.")
+        return None
+    return new_objects
+
+
 def setup_for_import(filepath):
     
     _, filename, _ = get_filename_ext(filepath)
@@ -384,7 +334,6 @@ def setup_for_import(filepath):
 
     if specified_collection:
         trimmed_name = specified_collection
-        
     else:
         trimmed_name = filename.split(".")[0]
 
@@ -411,65 +360,19 @@ def setup_for_import(filepath):
         else:
             print("Really failed this time. Apparently the layer collection exists in the  view layer but linking still failed.")
         pass
-    # This failing doesn't mean we need to create a new collection, it may already be linked or have some other benign cause. But, we still need to allocate a collection, or it just gets dumped on main.
-
-#        print("Failed to imported objects to the collection, potentially excluded from view layer'.")
-        # I don't want to try to force it to reenable the collection. Maybe that'd be a UI option but not a hardcoded default.
-        # So instead... 
-#        print(f"Existing collection `{trimmed_name}` unavailable: creating a new collection with a suffix.")
-#        try:   
-#            collection = bpy.data.collections.new(trimmed_name)
-#            bpy.context.scene.collection.children.link(collection) # For now, this creates a new one each time. Should it default to the earliest variant (by suffix)? I guess most people don't import their models 100 times per blend file so maybe it does't matter.
-#            # I really do want to just name the collection for testing though. Will add that.
-#        except Exception as e:
-#            print(f"Failed to create new collection with suffix as well: {e}")
 
     layer_collection = bpy.context.view_layer.layer_collection.children[collection.name] ## this will fail if the collection isn't linked to the view layer.
     bpy.context.view_layer.active_layer_collection = layer_collection
 
     existing_objects = set(bpy.context.scene.objects)
 
-    ### import from in here?
-
-#    directory, filename, _ = get_filename_ext(temppath2)
-#    import_gltf(filename, directory)##
-
-#    new_objects = [obj for obj in bpy.context.scene.objects if obj not in existing_objects]
-#    if new_objects == None:
-#        print("GLTF import failed, no new objects imported to scene.")
-#        return None, trimmed_name
-#    return new_objects, trimmed_name
-
     return existing_objects
-
-def import_gltf(filename, directory, existing_objects):
-
-    filename = filename + ".glb" if not filename.lower().endswith((".gltf", ".glb")) else filename
-    print("filepath, directory in import_gltf: ", filename, directory)
-    try:
-        bpy.ops.import_scene.gltf(filepath=filename, directory=directory, files=[{"name":filename}], loglevel=20)
-    except Exception as e:
-        print(f"GLTF import failed: {e}")
-        return None
-
-    new_objects = [obj for obj in bpy.context.scene.objects if obj not in existing_objects]
-    if new_objects == None:
-        print("GLTF import failed, no new objects imported to scene.")
-        return None
-    return new_objects
 
 def attempt_conversion(filepath, armaturepath):
 
     print("\n" *20)
     print("Beginning import process...")
     print()
-    status_definitions
-    # 0 = failed to get metadata
-    # 1 = armature + mesh (default for static models)
-    # 2 = animation only, needs armature to work (default for animated models)
-    # 3 = animation only GR2, armature file provided.
-    # 4 = armature + animation (merged) (currently cannot be imported due to lack of mesh)
-    # 5 = mesh, armature, animation (fully combined.) (Potentially possible but not necessarily desirable in all circumstances)
 
     status = metadata_func(filepath, armaturepath)
     print()
@@ -483,36 +386,23 @@ def attempt_conversion(filepath, armaturepath):
     if status == 1:
         print(f"Importing static model: {filename}")
         try:
-            gltf_path = convertto_GLTF(filepath, ext) ## need to rearrange this. Silly to have it here like this when it'll need repeating for other statuses. But worth getting it to function as is.
+            gltf_path = convertto_GLTF(filepath, ext)
             if gltf_path is None:
                 print("Direct GLTF conversion failed. Attempting full import process.")
-                dae_path = convertto_DAE(filepath, ext)
-                if dae_path is not None:
-                    print("New metadata check after DAE conversion:")
-                    status = metadata_func(filepath, armaturepath)
-                    print(f"Status {status}: `{status_definitions.get(status)}`")
-                    
-                    gltf_path = convertto_GLTF(dae_path, "dae")
-                    if gltf_path is not None:
-                        print("GLTF conversion from DAE successful.")
-                        status = metadata_func(filepath, armaturepath)
-                        print(f"Status {status}: `{status_definitions.get(status)}`")
-                        return gltf_path
-                    print("GLTF conversion from DAE failed. Aborting import.")
+                try:
+                    gltf_path = GR2_to_gltf(filepath, ext)
+                except Exception as e:
+                    print(f"conversion from gr2 to dae to gltf failed: {e}")
                     return None
-                print("DAE conversion failed. Aborting import.")
-                return None
+                return gltf_path
             else:
-                print("Direct GLTF conversion successful.")
-                print("New metadata check after direct conversion:")
-                status = metadata_func(filepath, armaturepath)
-                print(f"Status {status}: `{status_definitions.get(status)}`")
+                print("New metadata check after direct GLTF conversion:")
+                status = metadata_func(gltf_path, armaturepath)
+                print(f"Status {status}: `{status_definitions.get(status)}`") ## Is there any point in having this here? It's not a GR2 anymore so this can't read it, right?
                 return gltf_path
         except Exception as e:
             print(f"Direct GLTF conversion aborted due to error: {e}")
             return None
-
-        return new_objects
 
     if status == 3:
         _, armaturename, _ = get_filename_ext(armaturepath) if armaturepath else None
@@ -520,10 +410,28 @@ def attempt_conversion(filepath, armaturepath):
         combined_path = conformto_armature(filepath, armaturepath)
         if check_file_exists("attemptimport: combined path", combined_path):
             print("Combined GR2 file created successfully. Updated metadata check:")
-            new_status = metadata_func(filepath, armaturepath)
+            new_status = metadata_func(combined_path, armaturepath)
             print(f"{new_status}: {status_definitions.get(new_status)}")
-        return None, None
+            # Metadata - Meshes: 0, Armatures: 1, Animations: 1
+            if new_status in [4, 6]:
+                print("Attempt direct conversion of armature + anim to GLTF.")
+                _, _, ext = get_filename_ext(combined_path)
+                gltf_path = convertto_GLTF(combined_path, ext)
+                return gltf_path
+        return None
 
+    if status == 6:
+        # DAE file, just convert to GLTF.
+        print(f"DAE file detected: {filename}. Converting to GLTF.")
+        gltf_path = convertto_GLTF(filepath, ext)
+        if gltf_path is None:
+            print("Direct GLTF conversion failed. Attempting full import process.")
+            try:
+                gltf_path = GR2_to_gltf(filepath, ext)
+            except Exception as e:
+                print(f"conversion from gr2 to dae to gltf failed: {e}")
+                return None
+            return gltf_path
     print()
 
 def cleanup(new_objects):
@@ -696,11 +604,13 @@ def main():
         existing_objects = setup_for_import(file_to_import)
         imported = import_gltf(filename, directory, existing_objects)
 
-    if imported:
-        cleanup(imported)
-        print("Import successful.")
+        if imported:
+            cleanup(imported)
+            print("Import successful.")
+        else:
+            print("No files imported. Terminating process.")
     else:
-        print("No files imported. Terminating process.")
+        print("No files converted, and so no imports. Terminating process.")
         
 if mode == "metadata only":
     print("Metadata only mode, not importing.")
