@@ -2,7 +2,13 @@
 
 [I haven't been very good at this kind of documentation. Working on it.]
 
+
 # CURRENT:
+	Version 0.41:
+	  * Added mass metadata checker; optionally outputs to JSON with status (has armature,  has mesh, etc), internal filename, GR2Tag and local filepath. 
+		Currently uses a hardcoded file list. Will add folders later for collecting data en masse, but after the UI panel is done.
+
+          ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ 
 	Version 0.4:
 	  * Simple GR2/DAE/GLB/GLTF works
 	  * Basic animation imports works
@@ -10,8 +16,6 @@
 	  * Runs as a script in Script Editor directly, with file to be imported named in the code itself.
 	  * Metadata-checker to get status before import (ie whether the input GR2 includes animation, skeleton, mesh, etc)
 	  * Converter including the automatic combining of animation GR2s with provided matching Skeleton GR2s (as animations without armatures cannot be imported to Blender)
-
-    ~~~ ~~~ ~~~ ~~~ ~~~ ~~~ ~~~ ~~~ ~~~ ~~~ ~~~ ~~~ ~~~ ~~~ ~~~ ~~~ ~~~ ~~~ ~~~
  
 	Version 0.3.28:
 	  * Fixed Collection naming/allocation: correctly names the Collection either after the import object, or as specified. If the allocated collection is not available, it creates a new collection with '.001' style suffix.
@@ -19,10 +23,12 @@
 	Version 0.3.2:
 	  * Fixed some of the CLI issues with inconsistent filenames.
 	  
-	  
+
+
 # TODO:
 	As of 21/10/25:
-	
+	  * Find out how "GR2Tag" applies in the LSF files, see if it can be used for assigning correct skeleton file to anim files.
+	  * Automate parentage of imported animations to mesh/obj (optional)
 	  * Test for 0-size generated files. Currently they're discovered with the metadata checker, but return the same failure error as viable non-GR2 inputs.
 	  * Bone orientation needs calibration; currently is better than importing without fix but is inconsistent. Need to figure out the rules internally for why/when it flips on x/y to be able to compensate.
 			- Refer to "bpy.ops.wm.collada_import(filepath=str(collada_path), fix_orientation=True)" from Blender 4.3.2 for the original orientation fixes.
