@@ -220,6 +220,5 @@ bin/
 obj/
 
 # temporarily while I figure how how much I actually need of it, I don't just want to copy the whole repo here.
-LSLib/
 Gr2MetadataChecker.cs
 import_gr2_for_blender5_before_refactor.py
