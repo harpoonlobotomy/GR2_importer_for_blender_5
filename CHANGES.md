@@ -35,8 +35,8 @@
 
 
 	As of 20/10/2025:
-	  ~~ Fix import of models without meshes~~
-	  ~~ Rework import script to explicitly account for object-types found by the rootreader.~~
+	  DONE Fix import of models without meshes (Tried twice to get strikethrough to work in markdown. Apparently neither worked. Oh well.)
+	  DONE Rework import script to explicitly account for object-types found by the rootreader.
 	  * Blender UI/Addon
 	  * Licence details for the portions from LSLib.
 
