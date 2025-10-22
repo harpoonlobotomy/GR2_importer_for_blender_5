@@ -1,32 +1,24 @@
 # gr2_importer_shell
 
+from typing import Self
 import bpy
 from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Panel
 from datetime import datetime
 
-version = 0.1
+version = 0.2
 #22/10/25.
-# Doesn't actually do anything but make the UI panel yet, but it does do that. Tomorrow will get it hooked into the import gr2 script to actually do things.
+# Initial functions in progress.
 # - harpoon
-"""
 
-UI:
-Options (brainstorming):
-    - import general GR2 file, autoconfigure what kind it is.
-    - manually set 'armature', 'anim' and/or 'mesh' imports.
-    - add imported NLA actions onto a 'primary' anim model and delete old ones
-    - combine armature/anim import with mesh import
-    - batch import anims, combining with prescribed armature
-    - Tie in with matgen/tempgen
-    - db lookup for armature based on animation metadata
-    - prefs JSON to store current filepaths etc
-    - duration+framerate of anim to set start/end frames to that duration
-    - if poss, implement retargeting as part of anim import; set existing target armature or import new.
-    - set temp dir for temp files
-    - delete/keep temp files (or just keep the final .glb, etc)
-    
-"""
+bl_info = {
+    "name": "GR2_Importer",
+    "description": "GR2/DAE importer for Blender 5.0+",
+    "version": (0, 2, 0),
+    "blender": (5, 0, 0),
+    "category": "Object",
+    "location": "Property Panel, Press N in Viewport",
+}
 
 DEBUG_GROUPS = {
     "general_setup": True,
@@ -193,6 +185,28 @@ class GR2_OT_Importer_Run_Import(bpy.types.Operator):
         debug_print("general_setup", f" " * 17 + "=" *32 + "\n")
 
 
+        props = context.scene.gr2_importer_props
+        file_1 = props.file_1
+        file_2 = props.file_2
+        inputs = [file_1, file_2]
+
+        if "bpy" in locals():
+            import importlib
+            reloadable_modules = [
+                "import_gr2_for_blender5",
+                ""
+            ]
+            for module in reloadable_modules:
+                if module in locals():
+                    importlib.reload(locals()[module])
+
+        from . import (import_gr2_for_blender5)
+                        
+        import_gr2_for_blender5.run("import", inputs)
+
+    def invoke(self, context, event):
+        return self.execute(context)
+
 class GR2_OT_Test_Files(bpy.types.Operator):
     # run the rootreader for any filepaths in file1/file2, no imports.
     
@@ -206,6 +220,17 @@ class GR2_OT_Test_Files(bpy.types.Operator):
         debug_print("general_setup", f" " * 13 + "=" * 40)
         print("  === GR2 Test process started at", filetest_start, "===")
         debug_print("general_setup", f" " * 17 + "=" *32 + "\n")
+
+        props = context.scene.gr2_importer_props
+
+        file_1 = props.file_1
+        file_2 = props.file_2
+
+        inputs = [file_1, file_2]
+        #import_gr2_for_blender5.run("metadata_only", inputs)
+
+    def invoke(self, context, event):
+        return self.execute(context)
 
 # === REGISTRATION ===
 classes = (

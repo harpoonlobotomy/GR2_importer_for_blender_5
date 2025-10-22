@@ -1,3 +1,5 @@
+# ADDON VERSION
+
 # Collada import replacement for blender 5.0
 # Not perfect, but at present it does successfully import GR2 and DAE, with a start on bone alignment. 
 # Still needs more work but it does basically do what I need it to. Meshes + armatures are functional. Animations import, but obviously the bone misalignment is most apparent there.
@@ -6,7 +8,8 @@
  
 #  -- harpoon
   
-# 21/10/2025
+# 22/10/2025
+
 
 armaturepath = None # here to make sure there's always something. I kept commenting it out in testing.
 
@@ -31,9 +34,11 @@ r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatu
 #armaturepath =
 file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2"
 
-version = "0.44" # changed the lookup for object contents statuses, much neater now. Still didn't get around to the UI yet. Midnight, so, technically it's tomorrow's job.
+inputs = None, None#armaturepath, file_to_import
 
-mode = "all"
+version = "0.5" #adapted to work with the addon script. Needs more work to be fully function but basic import works from the UI panel.
+
+mode = "metadata_only"#"all"
 #mode = "mass_metadata" #"all"#"metadata only"  # other options: "all", "metadata only", "mass_metadata"
 metadata = True
 specified_collection = "fixed_again_21_10_25"
@@ -139,11 +144,11 @@ def get_metadata(filepath, printme):
     if result.returncode == 0:
         root_data = json.loads(result.stdout)
         if "Skeletons" in root_data and root_data.get("Skeletons") is not None:
-            armatures = len(root_data.get('Skeletons', []))
+            armatures = 1#len(root_data.get('Skeletons', [])) # making it '1' to work with the binary masking
         if "Meshes" in root_data and root_data.get("Meshes") is not None:
-            meshes = len(root_data.get('Meshes', []))
+            meshes = 1#len(root_data.get('Meshes', []))
         if "Animations" in root_data and root_data.get("Animations") is not None:
-            animations = len(root_data.get('Animations', []))
+            animations = 1#len(root_data.get('Animations', []))
         if "GR2Tag" in root_data and root_data.get("GR2Tag") is not None: # Does this always exist? I think so. # not sure if this is useful at all  yet. Maybe for partial automation of getting matching skeletons. Need to find out how to match to LSF data.
             extra_data.update({"GR2Tag": root_data.get('GR2Tag')})
         extra_data.update({"Internal_Filename": root_data['FromFileName']}) # I think  this is guaranteed to always exist? Would error in the rootreader if not.
@@ -188,6 +193,9 @@ def metadata_func(input_file, armaturepath=None, printme=True):
             anim = animations * ANIM
             content = mesh + armature + anim
 
+            print(f"meshes {meshes}, armatures {armatures}, animations {animations}, extra_data {extra_data}")
+
+            print(f"Content: {content}")
             if content == 4:
                 if check_file_exists("metadata: armature path", armaturepath):
                     skel_meshes, skel_armatures, skel_animations, _ = get_metadata(armaturepath, printme)
@@ -197,7 +205,7 @@ def metadata_func(input_file, armaturepath=None, printme=True):
                         return 41, extra_data
                     print_me(printme, "Armature file contains more than just armature. Tentatively returning; may fail.")
                     return 43, extra_data
-                return 42
+                return 42, extra_data
 
             return content, extra_data
 
@@ -209,7 +217,10 @@ def metadata_func(input_file, armaturepath=None, printme=True):
     print_me(printme, f"[{filename}] STATUS {status}: {status_definitions.get(status)} \n \n")
     return status, extra_data
 
-def mass_metadata(input_file_list, metadata_dict):
+def mass_metadata(input_file_list):
+
+    metadata_dict = {}
+
     for file in input_file_list:
         _, filename, _ = get_filename_ext(file)
         metadata_dict[filename] = {"local_file": file, "status": None, "GR2Tag": None, "Internal_Filename": None}
@@ -586,41 +597,91 @@ def cleanup(new_objects, status):
 
     return armature_list
 
-def main(file_to_import, armaturepath):
+def main(file_1, file_2):
 
-    print(f"File to import: {file_to_import}")
-    if metadata and ".gr2" in str(file_to_import):
-        print("Checking metadata first.")
-        metadata_func(file_to_import)
+    f1_status = f2_status = file_to_import = armaturepath = None
+    has_armature = [1, 3, 5, 7]
 
-    print("About to attempt conversion.")
-    converted, status = attempt_conversion(file_to_import, armaturepath)
-    if converted:
-        directory, filename, _ = get_filename_ext(converted)
-        existing_objects = setup_for_import(file_to_import)
-        imported = import_glb(filename, directory, existing_objects)
-
-        if imported:
-            cleanup(imported, status)
-            print("Import successful.")
-        else:
-            print("No files imported. Terminating process.")
-    else:
-        print("No files converted, and so no imports. Terminating process.")
-
-if mode == "mass_metadata":
-    print("Mass metadata mode: \n")
-    metadata_dict = {}
-    mass_metadata(import_list, metadata_dict)
-
-if mode == "metadata only":
-    print("Metadata only mode, not importing.")
-    if ".gr2" not in str(file_to_import).lower():
-        print("Cannot get metadata for non-GR2 files. Exiting.")
-        exit()
-    metadata_func(file_to_import)
+    def assign_files(file):
+        print(f"File to import: {file}")
+        if metadata and ".gr2" in str(file).lower():
+            print("Checking metadata first.")
+            status, _ = metadata_func(file)
+            return status
+        return 6
     
-elif mode == "all":
-    main(file_to_import, armaturepath)
+    f1_status = assign_files(file_1)
+    print(f"f1 status: {f1_status}")
+    f2_status = assign_files(file_2)
+    print(f"f2 status: {f2_status}")
+#allows for more varied armature files, not sure whether it's good or not.
+    if file_1 in has_armature and file_2 not in has_armature and f2_status not in [0, 00, None]: # has armature
+        armaturepath = file_1
+        file_to_import = file_2
 
+    elif file_2 in has_armature and file_1 not in has_armature and f1_status not in [0, 00, None]: # has armature
+        file_to_import = file_1
+        armaturepath = file_2
+
+
+    if file_to_import is None and armaturepath != None:
+        file_to_import = armaturepath
+
+    else:
+        file_to_import = file_1
+# only allows for perfect armature files.
+    #if file_1:
+    #    f1_status = assign_files(file_1)
+
+    #if file_2:
+    #    f2_status = assign_files(file_2)
+
+    #if f1_status == 1:
+    #    armaturepath = file_1
+    #elif f2_status == 1:
+    #    armaturepath = file_2
+
+    print(f"About to start conversion: file_to_import = {file_to_import}, armaturepath = {armaturepath}")
+    if file_to_import is not None:
+        print("About to attempt conversion.")
+        converted, status = attempt_conversion(file_to_import, armaturepath)
+        if converted:
+            directory, filename, _ = get_filename_ext(converted)
+            existing_objects = setup_for_import(file_to_import)
+            imported = import_glb(filename, directory, existing_objects)
+
+            if imported:
+                cleanup(imported, status)
+                print("Import successful.")
+            else:
+                print("No files imported. Terminating process.")
+        else:
+            print("No files converted, and so no imports. Terminating process.")
+    else:
+        print("File to import is None. Exiting.")
+
+def run(mode, inputs):
+
+    if mode == "metadata only":
+        for file in inputs:
+            print("Metadata only mode, not importing.")
+            if ".gr2" not in str(file).lower():
+                print(f"[ERROR] Cannot get metadata for non-GR2 files.")
+                print(f"No viable metadata available for {str(file)}")
+            metadata_func(file_to_import)
+        
+    elif mode == "import":
+        [file_1, file_2] = inputs
+        main(file_1, file_2)
 # option to replace existing objects with newly imported ones
+
+if __name__ == "__main__":
+
+#    if mode == "mass_metadata":
+#        print("Mass metadata mode: \n")
+#        mass_metadata(import_list)
+    try:
+        run(mode, inputs)
+    except Exception as e:
+        print(f"Error running importer: {e}")
+

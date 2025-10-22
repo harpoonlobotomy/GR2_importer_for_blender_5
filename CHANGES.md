@@ -4,11 +4,15 @@
 
 
 # CURRENT:
+	Version 0.5:
+	  * Basic functionality of the Blender addon is implemented.
+	  * Changed the status enums to work with binary mask, much neater now.
+          ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ 
+		  
 	Version 0.43:
 	  * Stopped the bone orientation from being applied to animations. 
-	  * Improved tolerance for DAE/GLB/GLTF file imports.
+	  * Improved tolerance for DAE/GLB/GLTF file imports.	  
 	  
-          ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ 	  
 	Version 0.41:
 	  * Added mass metadata checker; optionally outputs to JSON with status (has armature,  has mesh, etc), internal filename, GR2Tag and local filepath. 
 		Currently uses a hardcoded file list. Will add folders later for collecting data en masse, but after the UI panel is done.
@@ -28,6 +32,8 @@
 	  * Fixed some of the CLI issues with inconsistent filenames.
 
 # TODO:
+	As on 22/10/25:
+	  * Prefs json is in the works, Blender addon is baseline functional.
 	As of 21/10/25:
 	  * Add a database lookup for anim/skel combinations. If not 'GR2Tag', can just use the filename or potentially internal filename. (Probably the former more than the latter.)
 	  * Set up a prefs json for current filepaths once the UI is in.
@@ -43,7 +49,7 @@
 			- Also the option to name the temp files in accordance with the input file. Currently it just autogenerates a random filename.
 	  * Should implement support for export even if I don't need it personally.
 	  * Check if 'Game' LS file is actually needed/used at all anymore.
-	  * Actual addon with user preferences and UI panel. <- today's priority.
+	  DONE Actual addon with user preferences and UI panel. <- today's priority.
 
 
 	As of 20/10/2025:
