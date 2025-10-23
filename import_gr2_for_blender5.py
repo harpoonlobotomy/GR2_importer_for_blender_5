@@ -63,19 +63,20 @@ rootreader = r"D:\Git_Repos\GR2_importer_for_blender_5\rootreader\bin\Debug\net8
 status_definitions = {
     00: "File does not exist",
     0: "No reported mesh, animation or armature",
-    1: "Armature only",##
+    1: "Armature only",
     2: "Mesh only",
-    3: "Armature + mesh", ##
+    3: "Armature + mesh", 
     4: "Animation only",
     41: "Animation only GR2, valid armature provided",
     42: "Animation only, no valid armature provided",
     43: "Animation file. Armature file provided is not only armature",
-    5: "Armature & animation",##
+    5: "Armature & animation",
     6: "Not a GR2 file",
-    7: "Mesh, armature & animation"##
+    7: "Mesh, armature & animation"
 }
 
 #--- Check required files exist. --- #
+
 for path in [divineexe, rootreader]:
     if not Path(path).is_file():
         print(f"Required file not found: {path}. Please check the paths in the script.")
@@ -591,7 +592,7 @@ def cleanup(new_objects, status):
     bpy.ops.object.mode_set(mode='OBJECT')
 
     for item in armature_list:
-        print(f"Imported:    {item.name}")
+        print(f"Imported:  {item.name}")
 
     return armature_list
 
@@ -649,14 +650,19 @@ def main(file_1, file_2):
             imported = import_glb(filename, directory, existing_objects)
 
             if imported:
-                cleanup(imported, status)
+                imported_files = cleanup(imported, status)
+                file_list = [get_filename_ext(file_to_import)[1], imported_files]
                 print("Import successful.")
+                return file_list
             else:
                 print("No files imported. Terminating process.")
+                return "No files imported. Terminating process."
         else:
             print("No files converted, and so no imports. Terminating process.")
+            return "No files converted, and so no imports. Terminating process."
     else:
         print("File to import is None. Exiting.")
+        return "File to import is None. Exiting."
 
 def run(mode, inputs):
     metadata_collection = []
@@ -686,4 +692,6 @@ def run(mode, inputs):
 
     if mode == "import":
         [file_1, file_2] = inputs
-        main(file_1, file_2)
+        file_list = main(file_1, file_2)
+        return file_list
+

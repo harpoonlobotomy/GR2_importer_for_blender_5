@@ -1,4 +1,4 @@
-# gr2 importer shell
+# gr2_importer_shell
 
 from typing import Self
 import bpy
@@ -6,7 +6,7 @@ from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Panel
 from datetime import datetime
 
-version = 0.2
+version = 0.21
 #22/10/25.
 # Initial functions in progress.
 # - harpoon
@@ -14,7 +14,7 @@ version = 0.2
 bl_info = {
     "name": "GR2_Importer",
     "description": "GR2/DAE importer for Blender 5.0+",
-    "version": (0, 2, 0),
+    "version": (0, 2, 1),
     "blender": (5, 0, 0),
     "category": "Object",
     "location": "Property Panel, Press N in Viewport",
@@ -41,11 +41,13 @@ def keep_final_cb(self, context):
         return None
     self.remove_temp = not(self.keep_final)
 
-# Helper that shows a simple popup with lines of text
-def show_metadata_popup(text_lines, title="Metadata"):
+def show_popup(text_lines, title=""):
     """
     text_lines : list[str] or str (if str, will be split on newlines)
     """
+    if text_lines == None:
+        text_lines = "Nothing to display."
+
     if isinstance(text_lines, str):
         lines = text_lines.split("\n")
     else:
@@ -54,12 +56,11 @@ def show_metadata_popup(text_lines, title="Metadata"):
     def _draw(self, context):
         layout = self.layout
         for ln in lines:
-            layout.label(text=ln if ln != "" else " ")
+            layout.label(text=str(ln) if ln != "" else " ")
         layout.separator()
         layout.label(text="(Esc or anywhere outside to close)")
 
     bpy.context.window_manager.popup_menu(_draw, title=title, icon='INFO')
-
 
 # === PROPERTY GROUP ===
 class GR2_ImporterProps(bpy.types.PropertyGroup):
@@ -108,7 +109,7 @@ class GR2_ImporterProps(bpy.types.PropertyGroup):
         description="Show or hide advanced options",
         default=False)
     test_files: BoolProperty(name="test_file_components", default=False) # actually want it to be a button
-    collection_name_override: StringProperty(name="Collection Name (optional)", default="Collection Name (optional); if not used, the primary input filename will be used for the collection name.")
+    collection_name_override: StringProperty(name="Collection Name (optional)", default="", description="Collection Name (optional); if not used, the primary input filename will be used for the collection name.")
     custom_bone_obj: StringProperty(name="Custom Bone Object", default="Ico", description="Select an object to use as a custom bone.") # select from current blend? From file? 
     use_custom_bone_obj: BoolProperty(name="Use custom bones", default=True)
     temp_folder: StringProperty(name="Temp folder", default="")
@@ -204,16 +205,16 @@ class GR2_OT_Importer_Run_Import(bpy.types.Operator):
         print("  === Import process started at", import_start, "===")
         debug_print("general_setup", f" " * 17 + "=" *32 + "\n")
 
-
         props = context.scene.gr2_importer_props
         file_1 = props.file_1
         file_2 = props.file_2
         inputs = [file_1, file_2]
 
         from . import (import_gr2_for_blender5)
-                        
-        import_gr2_for_blender5.run("import", inputs)
+        imported_files = import_gr2_for_blender5.run("import", inputs)
 
+        show_popup(imported_files, title="Imported:")
+        return {'FINISHED'}
 
     def invoke(self, context, event):
         return self.execute(context)
@@ -245,7 +246,7 @@ class GR2_OT_Test_Files(bpy.types.Operator):
             metadata_collection.append("No viable files")    
         metadata_collection.append("  -------- DONE --------    ")
 
-        show_metadata_popup(metadata_collection, title="GR2 Metadata Results:")
+        show_popup(metadata_collection, title="GR2 Metadata Results:")
         return {'FINISHED'}
 
     def invoke(self, context, event):
