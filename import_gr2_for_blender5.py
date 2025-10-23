@@ -36,12 +36,12 @@ file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characte
 
 inputs = None, None#armaturepath, file_to_import
 
-version = "0.54" # metadata checker now works entirely within the addon, with a popup with the results (as well as print to terminal)
+version = "0.58" # metadata checker now works entirely within the addon, with a popup with the results (as well as print to terminal)
 
 mode = "metadata_only"#"all"
 #mode = "mass_metadata" #"all"#"metadata only"  # other options: "all", "metadata only", "mass_metadata"
 metadata = True
-specified_collection = "addon_23_10_25"
+specified_collection = "bulk_anim_test_1"
 
 json_output = False
 jsonout_file = f"F:\\test\\gr2_metadata.json" #None
@@ -74,6 +74,8 @@ status_definitions = {
     6: "Not a GR2 file",
     7: "Mesh, armature & animation"
 }
+
+has_armature = [1, 3, 5, 7]
 
 #--- Check required files exist. --- #
 
@@ -161,6 +163,7 @@ def get_metadata(filepath, printme):
 def metadata_func(input_file, armaturepath=None, printme=True):
 
     filename = get_filename_ext(input_file)[1]
+    extra_data = {}
 
     import_exists = check_file_exists(f"metadata: {filename}", input_file)
     if not import_exists:
@@ -180,7 +183,7 @@ def metadata_func(input_file, armaturepath=None, printme=True):
 
     if ".dae" in str(input_file).lower(): # check these first, don't bother running them for metadata
         return 7, extra_data, filename
-    elif ".glb" in str(input_file).lower() or "gltf" in str(input_file).lower():
+    elif ".glb" in str(input_file).lower() or ".gltf" in str(input_file).lower():
         return 8, extra_data, filename
 
     def get_status(input_file, armaturepath):
@@ -255,9 +258,9 @@ def conform_to_armature(filepath, armaturepath):
                 print("Armature file contains more than just an armature. May fail.")
             temppath = get_temppath()
             #print(f"filepath: {filepath}, armaturepath: {armaturepath}, temppath: {temppath}")
-            print("Divine CLI command for GR2 merge with new skeleton:")
-            print(f'"{divineexe}" --loglevel all -g bg3 -s "{filepath}" -d "{temppath}.{newfile_ext}" -i gr2 -o {newfile_ext} -a convert-model -e conform-copy conform-path "{armaturepath}"')
-            subprocess.run(f'"{divineexe}" --loglevel all -g bg3 -s "{filepath}" -d "{temppath}.{newfile_ext}" -i gr2 -o {newfile_ext} -a convert-model -e conform-copy --conform-path "{armaturepath}"')
+            #print("Divine CLI command for GR2 merge with new skeleton:")
+            #print(f'"{divineexe}" --loglevel all -g bg3 -s "{filepath}" -d "{temppath}.{newfile_ext}" -i gr2 -o {newfile_ext} -a convert-model -e conform-copy conform-path "{armaturepath}"')
+            subprocess.run(f'"{divineexe}" --loglevel warn -g bg3 -s "{filepath}" -d "{temppath}.{newfile_ext}" -i gr2 -o {newfile_ext} -a convert-model -e conform-copy --conform-path "{armaturepath}"')
         except Exception as e:
             print(f"Failed to generate GR2 with new skeleton. Returning early. Reason: {e}")
             return None
@@ -266,10 +269,10 @@ def conform_to_armature(filepath, armaturepath):
 
 def convert_to_DAE(filepath, temppath):
     temppath = str(temppath)
-    print(f"Divine CLI command for GR2 to DAE conversion:")
-    print(f'"{divineexe}" --loglevel all -g bg3 -s {filepath} -d {temppath} -i gr2 -o dae -a convert-model -e flip-uvs')
+    #print(f"Divine CLI command for GR2 to DAE conversion:")
+    #print(f'"{divineexe}" --loglevel all -g bg3 -s {filepath} -d {temppath} -i gr2 -o dae -a convert-model -e flip-uvs')
     try:
-            subprocess.run(f'"{divineexe}" --loglevel all -g bg3 -s "{filepath}" -d "{temppath}" -i gr2 -o dae -a convert-model -e flip-uvs')
+            subprocess.run(f'"{divineexe}" --loglevel warn -g bg3 -s "{filepath}" -d "{temppath}" -i gr2 -o dae -a convert-model -e flip-uvs')
     except Exception as e:
         print(f"Failed to generate DAE with Divine. Returning early. Reason: {e}")
         return None
@@ -285,11 +288,11 @@ def convert_to_GLB(temppath, fromtype):
 
     fromtype = fromtype.replace(".", "")
     
-    print(f"Divine CLI command for {fromtype} to GLB conversion:")
-    print(f'"{divineexe}" --loglevel all -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o glb -a convert-model -e flip-uvs')
-    print()
+    #print(f"Divine CLI command for {fromtype.upper()} to GLB conversion:")
+    #print(f'"{divineexe}" --loglevel all -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o glb -a convert-model -e flip-uvs')
+    #print()
     try:
-        subprocess.run(f'"{divineexe}" --loglevel all -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o glb -a convert-model -e flip-uvs')
+        subprocess.run(f'"{divineexe}" --loglevel warn -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o glb -a convert-model -e flip-uvs')
         return temppath2
     except Exception as e:
         print(f"Failed to generate glb from {fromtype} with Divine. Returning early. Reason: {e}")
@@ -400,7 +403,7 @@ def attempt_conversion(filepath, armaturepath):
             print(f"Direct GLB conversion aborted due to error: {e}")
             return None, anim_or_static
 
-    if status == 4 or status == 43:
+    if status in [4, 41, 43]:
         _, armaturename, _ = get_filename_ext(armaturepath) if armaturepath else None
         print(f"Combining {filename} with armature {armaturename}.")
         if status == 43:
@@ -408,7 +411,7 @@ def attempt_conversion(filepath, armaturepath):
         combined_path = conform_to_armature(filepath, armaturepath)
         if check_file_exists("attemptimport: combined path", combined_path):
             print("Combined GR2 file created successfully. Updated metadata check:")
-            new_status, _ = metadata_func(combined_path, armaturepath, printme = True)
+            new_status, _, _ = metadata_func(combined_path, armaturepath, printme = True)
             if new_status in [5, 7]:
                 print("Attempt direct conversion of armature + anim to glb.")
                 glb_path = convert_to_GLB(combined_path, get_filename_ext(combined_path)[2])
@@ -487,7 +490,6 @@ def cleanup(new_objects, status):
                 bpy.ops.object.mode_set(mode='EDIT') # just for set to edit mode, whether it already was or not doesn't seem to error it.
                 bpy.context.object.data.show_axes = True # just because it's useful.
 
-                print(f"context: {context}")
                 for bone in context:
                     #print(f"Bone: {bone}, head: {bone.head}, tail: {bone.tail}")
                     children = []
@@ -596,49 +598,27 @@ def cleanup(new_objects, status):
 
     return armature_list
 
-def main(file_1, file_2):
+def set_up_bulk_convert(armaturepath, anim_dir):
 
-    f1_status = f2_status = file_to_import = armaturepath = None
-    has_armature = [1, 3, 5, 7]
+    # testing armature: F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2
+    # testing dir: #  F:\test\gltf_tests\raw_intdev_anims
+    print("Warning: May take a while if there are many files to convert.")
+    imported_anims = [f"Armature used: {get_filename_ext(armaturepath)[1]}"]
+    #get filelist from dir
+    import os
+    test_list = os.listdir(anim_dir)
+    print(f"Test list: {test_list}")
+    for anim in test_list:
+        print(f"Anim in test list: {anim}")
+        filepath = anim_dir + "\\" + anim
+        if check_file_exists("testing animation file before bulk conversion", filepath):
+            anim_file = import_process(filepath, armaturepath)
+            imported_anims.append(anim_file)
+        else:
+            print("No animation file(s) found.")
+    return imported_anims
 
-    def assign_files(file):
-        print(f"File to import: {file}")
-        if metadata and ".gr2" in str(file).lower():
-            print("Checking metadata first.")
-            status, _, _ = metadata_func(file)
-            return status
-        return 6
-    
-    f1_status = assign_files(file_1)
-    print(f"f1 status: {f1_status}")
-    f2_status = assign_files(file_2)
-    print(f"f2 status: {f2_status}")
-#allows for more varied armature files, not sure whether it's good or not.
-    if file_1 in has_armature and file_2 not in has_armature and f2_status not in [0, 00, None]: # has armature
-        armaturepath = file_1
-        file_to_import = file_2
-
-    elif file_2 in has_armature and file_1 not in has_armature and f1_status not in [0, 00, None]: # has armature
-        file_to_import = file_1
-        armaturepath = file_2
-
-
-    if file_to_import is None and armaturepath != None:
-        file_to_import = armaturepath
-
-    else:
-        file_to_import = file_1
-# only allows for perfect armature files.
-    #if file_1:
-    #    f1_status = assign_files(file_1)
-
-    #if file_2:
-    #    f2_status = assign_files(file_2)
-
-    #if f1_status == 1:
-    #    armaturepath = file_1
-    #elif f2_status == 1:
-    #    armaturepath = file_2
+def import_process(file_to_import, armaturepath):
 
     print(f"About to start conversion: file_to_import = {file_to_import}, armaturepath = {armaturepath}")
     if file_to_import is not None:
@@ -651,9 +631,8 @@ def main(file_1, file_2):
 
             if imported:
                 imported_files = cleanup(imported, status)
-                file_list = [get_filename_ext(file_to_import)[1], imported_files]
                 print("Import successful.")
-                return file_list
+                return imported_files
             else:
                 print("No files imported. Terminating process.")
                 return "No files imported. Terminating process."
@@ -662,9 +641,61 @@ def main(file_1, file_2):
             return "No files converted, and so no imports. Terminating process."
     else:
         print("File to import is None. Exiting.")
-        return "File to import is None. Exiting."
+        return "No file to import."
 
-def run(mode, inputs):
+def assign_files(file):
+    print(f"File to import: {file}")
+    if metadata and ".gr2" in str(file).lower():
+        print("Checking metadata first.")
+        status, _, _ = metadata_func(file)
+        return status
+    return 6
+
+def main(file_1, file_2, settings):
+
+    f1_status = f2_status = file_to_import = armaturepath = None
+
+    import_type = settings.get("import_type")
+
+    if import_type == "bulk_anim":
+        print("Bulk Anim Mode.")
+        if assign_files(file_1) == 1:
+            armaturepath = file_1
+        elif assign_files(file_1) in has_armature:
+            print("Armature file is not just armature: may fail.")
+            armaturepath = file_1
+        else:
+            print("Armature file does not contain a viable armature. Returning.")
+            return f"No viable armature in {file_1}"
+        anim_dir = file_2
+    #    settings = {"collection_name":props.collection_name_override, "import_type":props.import_type, 
+    #                "custom_bones":props.use_custom_bone_obj, "custom_bone_obj":props.custom_bone_obj, 
+    #                "remove_all_temp":props.remove_temp, "keep_final":props.keep_final}
+        file_list = set_up_bulk_convert(armaturepath, anim_dir)
+        return file_list
+
+    else:
+        f1_status = assign_files(file_1)
+        print(f"f1 status: {f1_status}")
+        f2_status = assign_files(file_2)
+        print(f"f2 status: {f2_status}")
+    #allows for more varied armature files, not sure whether it's good or not.
+        if file_1 in has_armature and file_2 not in has_armature and f2_status not in [0, 00, None]: # has armature
+            file_to_import = file_2
+            armaturepath = file_1
+        elif file_2 in has_armature and file_1 not in has_armature and f1_status not in [0, 00, None]: # has armature
+            file_to_import = file_1
+            armaturepath = file_2
+        if file_to_import is None and armaturepath != None:
+            file_to_import = armaturepath
+        else:
+            file_to_import = file_1
+
+        imported_files = import_process(file_to_import, armaturepath)
+        file_list = [get_filename_ext(file_to_import)[1], imported_files]
+        return file_list
+
+def run(mode, inputs, settings=None):
     metadata_collection = []
     idx = 1
     if mode == "metadata":
@@ -692,6 +723,6 @@ def run(mode, inputs):
 
     if mode == "import":
         [file_1, file_2] = inputs
-        file_list = main(file_1, file_2)
+        file_list = main(file_1, file_2, settings)
         return file_list
 

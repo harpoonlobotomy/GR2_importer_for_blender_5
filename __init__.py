@@ -1,12 +1,12 @@
-# gr2_importer_shell
+# gr2 importer shell/UI
+# 2025 HarpoonLobotomy
 
-from typing import Self
 import bpy
 from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Panel
 from datetime import datetime
 
-version = 0.21
+version = 0.24
 #22/10/25.
 # Initial functions in progress.
 # - harpoon
@@ -14,7 +14,7 @@ version = 0.21
 bl_info = {
     "name": "GR2_Importer",
     "description": "GR2/DAE importer for Blender 5.0+",
-    "version": (0, 2, 1),
+    "version": (0, 2, 4),
     "blender": (5, 0, 0),
     "category": "Object",
     "location": "Property Panel, Press N in Viewport",
@@ -98,9 +98,15 @@ class GR2_ImporterProps(bpy.types.PropertyGroup):
         description="Secondary import file",
         subtype="FILE_PATH"
     )
+    armature_file_for_bulk: StringProperty(
+        name="", 
+        default=r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2",
+        description="Armature file to conform animation files to",
+        subtype="FILE_PATH")
+### idk if I want to have the armature file for bulk import separate from the regular primary. Better to be able to switch between them or to have the top line consistent?
     anim_dir: StringProperty(
         name="",
-        default="folder/somewhere/",
+        default=r"F:\test\gltf_tests\raw_intdev_anims",
         description="Directory of armature files",
         subtype="DIR_PATH"
     )
@@ -112,7 +118,7 @@ class GR2_ImporterProps(bpy.types.PropertyGroup):
     collection_name_override: StringProperty(name="Collection Name (optional)", default="", description="Collection Name (optional); if not used, the primary input filename will be used for the collection name.")
     custom_bone_obj: StringProperty(name="Custom Bone Object", default="Ico", description="Select an object to use as a custom bone.") # select from current blend? From file? 
     use_custom_bone_obj: BoolProperty(name="Use custom bones", default=True)
-    temp_folder: StringProperty(name="Temp folder", default="")
+    temp_folder: StringProperty(name="Temp folder", default="") # should be in prefs, not here.
 
     # === PANELS ===
 def draw_GR2import_panel(self, context):
@@ -147,7 +153,7 @@ def draw_GR2import_panel(self, context):
         bulk_anim=layout.box()
         bulk_col = bulk_anim.column(align=True)
         bulk_col.label(text="Common armature:")
-        bulk_col.prop(props, "file_1")
+        bulk_col.prop(props, "armature_file_for_bulk")
         bulk_col.separator()
         bulk_col.label(text="Animation files folder:")
         bulk_col.prop(props, "anim_dir")
@@ -206,12 +212,18 @@ class GR2_OT_Importer_Run_Import(bpy.types.Operator):
         debug_print("general_setup", f" " * 17 + "=" *32 + "\n")
 
         props = context.scene.gr2_importer_props
-        file_1 = props.file_1
-        file_2 = props.file_2
-        inputs = [file_1, file_2]
-
+        
+        if props.import_type == "bulk_anim":
+            inputs = [props.armature_file_for_bulk, props.anim_dir]
+        else:
+            inputs = [props.file_1, props.file_2]
+        
+        settings = {"collection_name":props.collection_name_override, "import_type":props.import_type, 
+                    "custom_bones":props.use_custom_bone_obj, "custom_bone_obj":props.custom_bone_obj, 
+                    "remove_all_temp":props.remove_temp, "keep_final":props.keep_final}
+        
         from . import (import_gr2_for_blender5)
-        imported_files = import_gr2_for_blender5.run("import", inputs)
+        imported_files = import_gr2_for_blender5.run("import", inputs, settings)
 
         show_popup(imported_files, title="Imported:")
         return {'FINISHED'}
