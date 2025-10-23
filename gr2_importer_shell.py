@@ -41,6 +41,26 @@ def keep_final_cb(self, context):
         return None
     self.remove_temp = not(self.keep_final)
 
+# Helper that shows a simple popup with lines of text
+def show_metadata_popup(text_lines, title="Metadata"):
+    """
+    text_lines : list[str] or str (if str, will be split on newlines)
+    """
+    if isinstance(text_lines, str):
+        lines = text_lines.split("\n")
+    else:
+        lines = list(text_lines)
+
+    def _draw(self, context):
+        layout = self.layout
+        for ln in lines:
+            layout.label(text=ln if ln != "" else " ")
+        layout.separator()
+        layout.label(text="(Esc or anywhere outside to close)")
+
+    bpy.context.window_manager.popup_menu(_draw, title=title, icon='INFO')
+
+
 # === PROPERTY GROUP ===
 class GR2_ImporterProps(bpy.types.PropertyGroup):
 
@@ -67,7 +87,7 @@ class GR2_ImporterProps(bpy.types.PropertyGroup):
     )
     file_1: StringProperty(
         name="",
-        default="Primary input file",
+        default=r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2",
         description="Primary import file",
         subtype='FILE_PATH'
     )
@@ -190,22 +210,14 @@ class GR2_OT_Importer_Run_Import(bpy.types.Operator):
         file_2 = props.file_2
         inputs = [file_1, file_2]
 
-        if "bpy" in locals():
-            import importlib
-            reloadable_modules = [
-                "import_gr2_for_blender5",
-                ""
-            ]
-            for module in reloadable_modules:
-                if module in locals():
-                    importlib.reload(locals()[module])
-
         from . import (import_gr2_for_blender5)
                         
         import_gr2_for_blender5.run("import", inputs)
 
+
     def invoke(self, context, event):
         return self.execute(context)
+
 
 class GR2_OT_Test_Files(bpy.types.Operator):
     # run the rootreader for any filepaths in file1/file2, no imports.
@@ -214,20 +226,27 @@ class GR2_OT_Test_Files(bpy.types.Operator):
     bl_label = "Test File(s) for Components"
     
     def execute(self, context):
-    
-        filetest_start = datetime.now()
-        debug_print("general_setup", f"\n" * 12)
-        debug_print("general_setup", f" " * 13 + "=" * 40)
-        print("  === GR2 Test process started at", filetest_start, "===")
-        debug_print("general_setup", f" " * 17 + "=" *32 + "\n")
+        metadata_collection = None
+        #filetest_start = datetime.now()
+        #debug_print("general_setup", f"\n" * 6)
+        #debug_print("general_setup", f" " * 13 + "=" * 40)
+        #print("  === GR2 Test process started at", filetest_start, "===")
+        #debug_print("general_setup", f" " * 17 + "=" *32 + "\n")
 
         props = context.scene.gr2_importer_props
-
         file_1 = props.file_1
         file_2 = props.file_2
 
         inputs = [file_1, file_2]
-        #import_gr2_for_blender5.run("metadata_only", inputs)
+
+        from . import (import_gr2_for_blender5)
+        metadata_collection = import_gr2_for_blender5.run("metadata", inputs)
+        if metadata_collection == None:
+            metadata_collection.append("No viable files")    
+        metadata_collection.append("  -------- DONE --------    ")
+
+        show_metadata_popup(metadata_collection, title="GR2 Metadata Results:")
+        return {'FINISHED'}
 
     def invoke(self, context, event):
         return self.execute(context)

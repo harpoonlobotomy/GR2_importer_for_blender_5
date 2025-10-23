@@ -36,17 +36,16 @@ file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characte
 
 inputs = None, None#armaturepath, file_to_import
 
-version = "0.5" #adapted to work with the addon script. Needs more work to be fully function but basic import works from the UI panel.
+version = "0.54" # metadata checker now works entirely within the addon, with a popup with the results (as well as print to terminal)
 
 mode = "metadata_only"#"all"
 #mode = "mass_metadata" #"all"#"metadata only"  # other options: "all", "metadata only", "mass_metadata"
 metadata = True
-specified_collection = "fixed_again_21_10_25"
+specified_collection = "addon_23_10_25"
 
 json_output = False
 jsonout_file = f"F:\\test\\gr2_metadata.json" #None
 
-print("\n" *20)
 import bpy
 from addon_utils import check, enable
 import re
@@ -91,8 +90,8 @@ def is_console_visible():
     hwnd = ctypes.windll.kernel32.GetConsoleWindow()
     return hwnd != 0 and ctypes.windll.user32.IsWindowVisible(hwnd)
     
-if not is_console_visible():
-    bpy.ops.wm.console_toggle()
+#if not is_console_visible():
+#    bpy.ops.wm.console_toggle()
 
 # Make sure the native glb importer is enabled for later. # 
 default, enabled = check("io_scene_gltf2")
@@ -165,14 +164,13 @@ def metadata_func(input_file, armaturepath=None, printme=True):
     import_exists = check_file_exists(f"metadata: {filename}", input_file)
     if not import_exists:
         print_me(printme, f"Import file `{filename}` does not exist. Aborting metadata check.")
-        return 00
+        return 00, None, filename
     
-    print(f"Getting armature data for {filename}")
     if input_file == armaturepath:
-        print_me(printme, "Testing armature for metadata:")
+        print_me(printme, "Testing armature file for metadata:")
         skel_meshes, skel_armatures, skel_animations, extra_data = get_metadata(armaturepath, printme)
         if (skel_meshes, skel_armatures, skel_animations) == (0, 0, 1): # this part feels repetitive with 'get_status' now it's updated. Need to fix.
-            return 4, extra_data
+            return 4, extra_data, filename
     
     print_me(printme, f"Checking metadata for `{filename}`:")
     if armaturepath is not None and not check_file_exists("metadata: armature path", armaturepath): ## Not sure if this works. 'If it says there's a path but the file doesn't exist' is the intent.
@@ -180,9 +178,9 @@ def metadata_func(input_file, armaturepath=None, printme=True):
         print_me(printme, f"Armature path `{filename}` is not a valid file. Ignoring.")
 
     if ".dae" in str(input_file).lower(): # check these first, don't bother running them for metadata
-        return 7, extra_data
+        return 7, extra_data, filename
     elif ".glb" in str(input_file).lower() or "gltf" in str(input_file).lower():
-        return 8, extra_data
+        return 8, extra_data, filename
 
     def get_status(input_file, armaturepath):
         ARM, MSH, ANIM = 1, 2, 4
@@ -193,9 +191,6 @@ def metadata_func(input_file, armaturepath=None, printme=True):
             anim = animations * ANIM
             content = mesh + armature + anim
 
-            print(f"meshes {meshes}, armatures {armatures}, animations {animations}, extra_data {extra_data}")
-
-            print(f"Content: {content}")
             if content == 4:
                 if check_file_exists("metadata: armature path", armaturepath):
                     skel_meshes, skel_armatures, skel_animations, _ = get_metadata(armaturepath, printme)
@@ -215,23 +210,25 @@ def metadata_func(input_file, armaturepath=None, printme=True):
 
     status, extra_data = get_status(input_file, armaturepath)
     print_me(printme, f"[{filename}] STATUS {status}: {status_definitions.get(status)} \n \n")
-    return status, extra_data
+    return status, extra_data, filename
 
 def mass_metadata(input_file_list):
 
     metadata_dict = {}
 
     for file in input_file_list:
-        _, filename, _ = get_filename_ext(file)
-        metadata_dict[filename] = {"local_file": file, "status": None, "GR2Tag": None, "Internal_Filename": None}
-        status, extra_data = metadata_func(file, armaturepath, printme = False) # now prints internally, don't need to print the prologue.
-        metadata_dict[filename].update({
-            "status": f"{status}: {status_definitions.get(status)}"})
-        if extra_data:
-            metadata_dict[filename].update({
-            "GR2Tag": extra_data.get("GR2Tag"),
-            "Internal_Filename": extra_data.get("Internal_Filename")
-        })
+        # maybe check filetype first and assign status 6 immediately. Should do that.
+        if "gr2" not in file.lower():
+            _, filename, _ = get_filename_ext(file)
+            metadata_dict[filename] = {"local_file": file, "status": f"{6}: {status_definitions.get(6)}"}
+        else:
+            status, extra_data, filename = metadata_func(file, armaturepath, printme = False) # now prints internally, don't need to print the prologue.
+            metadata_dict[filename] = {"local_file": file, "status": f"{status}: {status_definitions.get(status)}", "GR2Tag": extra_data.get("GR2Tag"), "Internal_Filename": extra_data.get("Internal_Filename")} #moved these here, move back to separate 'if extra_data' if it causes errors.
+        #if extra_data:
+        #    metadata_dict[filename].update({
+         #   "GR2Tag": extra_data.get("GR2Tag"),
+        #    "Internal_Filename": extra_data.get("Internal_Filename")
+        #})
 
     if json_output:
         import json
@@ -249,7 +246,7 @@ def conform_to_armature(filepath, armaturepath):
     newfile_ext = "gr2"#changed back to GR2 so I can check the metadata. The animations to do tend to go directly from GR2 to GLTF once converted, though.
     if armaturepath != None:
         try:
-            arma_status, _ = metadata_func(armaturepath, armaturepath, printme=True) # Should use logging levels instead of printme but it'll do for now.
+            arma_status, _, _ = metadata_func(armaturepath, armaturepath, printme=True) # Should use logging levels instead of printme but it'll do for now.
             if arma_status not in has_armature:#[1, 4, 5, 6]:
                 print("Provided armature path does not contain a skeleton. Aborting conform process.")
                 return None
@@ -372,8 +369,9 @@ def attempt_conversion(filepath, armaturepath):
     print("Beginning import process...")
     print()
 
-    status, _ = metadata_func(filepath, armaturepath, printme = True)
-    _, filename, ext = get_filename_ext(filepath)
+    status, _, filename = metadata_func(filepath, armaturepath, printme = True)
+    ext = get_filename_ext(filepath)[2] # check if this works.
+    # if not, go back to // _, filename, ext = get_filename_ext(filepath)
 
     if status in has_anim:
         anim_or_static = "animation"
@@ -606,7 +604,7 @@ def main(file_1, file_2):
         print(f"File to import: {file}")
         if metadata and ".gr2" in str(file).lower():
             print("Checking metadata first.")
-            status, _ = metadata_func(file)
+            status, _, _ = metadata_func(file)
             return status
         return 6
     
@@ -661,27 +659,31 @@ def main(file_1, file_2):
         print("File to import is None. Exiting.")
 
 def run(mode, inputs):
-
-    if mode == "metadata only":
+    metadata_collection = []
+    idx = 1
+    if mode == "metadata":
         for file in inputs:
-            print("Metadata only mode, not importing.")
-            if ".gr2" not in str(file).lower():
-                print(f"[ERROR] Cannot get metadata for non-GR2 files.")
-                print(f"No viable metadata available for {str(file)}")
-            metadata_func(file_to_import)
-        
-    elif mode == "import":
+            if "Secondary file (if needed)" in file:
+                metadata_collection.append("[File 2: -- No secondary file --]")
+                continue
+            if ".gr2" not in str(file).lower() and file.strip() != "":
+                print(f"[WARN] Cannot get metadata for non-GR2 files ({str(file)}).")
+                metadata_collection.append(f"[File {idx}: [{get_filename_ext(file)[1]}] STATUS 6: {status_definitions.get(6)}] \n \n")
+                idx += 1
+                continue
+            if file.strip() == "":
+                print(f"No file in fileline {idx}")
+                metadata_collection.append(f"[File {idx}: STATUS 0: No Filepath] \n \n")
+                idx += 1
+                continue
+            status, _, filename = metadata_func(file_to_import, None, False)
+            metadata_collection.append(f"[File {idx}: [{filename}] STATUS {status}: {status_definitions.get(status)}] \n \n")
+            idx += 1
+
+        for item in metadata_collection:
+            print(item)
+        return metadata_collection
+
+    if mode == "import":
         [file_1, file_2] = inputs
         main(file_1, file_2)
-# option to replace existing objects with newly imported ones
-
-if __name__ == "__main__":
-
-#    if mode == "mass_metadata":
-#        print("Mass metadata mode: \n")
-#        mass_metadata(import_list)
-    try:
-        run(mode, inputs)
-    except Exception as e:
-        print(f"Error running importer: {e}")
-
