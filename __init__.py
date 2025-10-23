@@ -1,4 +1,4 @@
-# gr2_importer_shell
+# gr2 importer shell
 
 from typing import Self
 import bpy
