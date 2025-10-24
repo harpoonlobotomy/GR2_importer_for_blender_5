@@ -1,5 +1,8 @@
 # ADDON VERSION
 
+#changing the name: GR2 Importer 2025, instead of 'GR2 Importer for Blender 5'. 
+# #Shouldn't be too hard to make it backwards compatible with 4.3~, so a year just to indicate 'this is modern' feels better than a specific blender release.
+
 # Collada import replacement for blender 5.0
 # Not perfect, but at present it does successfully import GR2 and DAE, with a start on bone alignment. 
 # Still needs more work but it does basically do what I need it to. Meshes + armatures are functional. Animations import, but obviously the bone misalignment is most apparent there.
@@ -34,15 +37,16 @@ r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatu
 #armaturepath =
 file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2"
 
-inputs = None, None#armaturepath, file_to_import
+#inputs = None, None#armaturepath, file_to_import
 
-version = "0.58" # metadata checker now works entirely within the addon, with a popup with the results (as well as print to terminal)
+version = "0.6" # adding console control, only checking for relevant files as needed, making sure the glTF addon is enabled when run via the init.
+                    #refixed the armature naming/collections, added custom bone support (either by writing the obj name, or setting the selected obj in the UI.)
 
-mode = "metadata_only"#"all"
+#mode = "metadata_only"#"all"
 #mode = "mass_metadata" #"all"#"metadata only"  # other options: "all", "metadata only", "mass_metadata"
-metadata = True
-specified_collection = "bulk_anim_test_1"
-
+#metadata = True
+#specified_collection = "bulk_anim_test_1"
+#fix_bones = True
 json_output = False
 jsonout_file = f"F:\\test\\gr2_metadata.json" #None
 
@@ -53,11 +57,12 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-use_existing_collection = True
-custom_bones_on = True
+#use_existing_collection = True
+#custom_bones_on = True
 
 divineexe = r"F:\Blender\Addons etc\Packed\Tools\Divine.exe"
-divinedir = r"F:\Blender\Addons etc\Packed\Tools"
+divinedir = str(Path(divineexe).parent) #testing
+#divinedir = r"F:\Blender\Addons etc\Packed\Tools"
 rootreader = r"D:\Git_Repos\GR2_importer_for_blender_5\rootreader\bin\Debug\net8.0\rootreader.exe"
 
 status_definitions = {
@@ -75,36 +80,45 @@ status_definitions = {
     7: "Mesh, armature & animation"
 }
 
-has_armature = [1, 3, 5, 7]
+has_armature = [1,3,5,7]
+
+def initial_setup(mode, settings):
+
+    print(f"Settings: {settings}")
+    if mode == "import":
+        path = divineexe#"addon preferences/divine" # these don't exist yet.
+    elif mode == "metadata":
+        path = rootreader#"addon preferences/metadata_checker"
 
 #--- Check required files exist. --- #
+    def check_for_exe(path):
+        #for path in [divineexe, rootreader]: # prev just checked both, this time only check the one needed.
+        if not Path(path).is_file():
+            print(f"Required file not found: {path}. Please check the paths in the script.") # should this be filename instead?
+            return list(f"Cannot initialise, required file not found: `{path}`.", "Please add correct path in Add-on Preferences.")
 
-for path in [divineexe, rootreader]:
-    if not Path(path).is_file():
-        print(f"Required file not found: {path}. Please check the paths in the script.")
-        print("Press 'Enter' to continue, type 'Exit' to exit.")
-        user_input = input()
-        if user_input.lower() == 'exit':
-            exit()
+    check_for_exe(path)
 
 ### --- Ensure console is visible before running anything. --- ###
-def is_console_visible():
-    import ctypes
-    hwnd = ctypes.windll.kernel32.GetConsoleWindow()
-    return hwnd != 0 and ctypes.windll.user32.IsWindowVisible(hwnd)
-    
-#if not is_console_visible():
-#    bpy.ops.wm.console_toggle()
+    def is_console_visible():
+        import ctypes
+        hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        return hwnd != 0 and ctypes.windll.user32.IsWindowVisible(hwnd)
 
-# Make sure the native glb importer is enabled for later. # 
-default, enabled = check("io_scene_gltf2")
-if not enabled:
-    try:
-        enable("io_scene_gltf2", default_set=True, persistent=True)
-    except Exception as e:
-        print(f"Failed to enable gltf importer: {e}")
-        print("Please enable the 'gltf 2.0 format' addon manually in Blender preferences and try again.")
-        exit()
+    if settings.get("open_console"):  
+        if not is_console_visible():
+            bpy.ops.wm.console_toggle()
+
+    if mode == "import":
+        # Make sure the native glb importer is enabled for later. #
+        default, enabled = check("io_scene_gltf2")
+        if not enabled:
+            try:
+                enable("io_scene_gltf2", default_set=True, persistent=True)
+            except Exception as e:
+                print(f"Failed to enable glTF native importer: {e}")
+                print("Please enable the 'glTF 2.0 Format' addon manually in Blender preferences and try again.")
+                return list(f"Failed to enable glTF Importer: {e}", "Please enable `glTF 2.0 Format` addon manually in Blender Add-ons and try again.")
 
 def print_me(status, *args, **kwargs):
     if status:
@@ -221,18 +235,12 @@ def mass_metadata(input_file_list):
     metadata_dict = {}
 
     for file in input_file_list:
-        # maybe check filetype first and assign status 6 immediately. Should do that.
         if "gr2" not in file.lower():
             _, filename, _ = get_filename_ext(file)
-            metadata_dict[filename] = {"local_file": file, "status": f"{6}: {status_definitions.get(6)}"}
+            metadata_dict[filename] = {"local_file": file, "status": f"6: {status_definitions.get(6)}"}
         else:
             status, extra_data, filename = metadata_func(file, armaturepath, printme = False) # now prints internally, don't need to print the prologue.
             metadata_dict[filename] = {"local_file": file, "status": f"{status}: {status_definitions.get(status)}", "GR2Tag": extra_data.get("GR2Tag"), "Internal_Filename": extra_data.get("Internal_Filename")} #moved these here, move back to separate 'if extra_data' if it causes errors.
-        #if extra_data:
-        #    metadata_dict[filename].update({
-         #   "GR2Tag": extra_data.get("GR2Tag"),
-        #    "Internal_Filename": extra_data.get("Internal_Filename")
-        #})
 
     if json_output:
         import json
@@ -241,13 +249,10 @@ def mass_metadata(input_file_list):
         
 
 #### IMPORT HELPERS ####
-
 def conform_to_armature(filepath, armaturepath):
 
-    ## Changed this to DAE on a whim. Not sure if it's necessary or not, will test more tomorrow.
-    # Need to try making it GLB immediately, see if i can skip the middle steps.
     has_armature = [1, 3, 5, 7]
-    newfile_ext = "gr2"#changed back to GR2 so I can check the metadata. The animations to do tend to go directly from GR2 to GLTF once converted, though.
+    newfile_ext = "gr2"
     if armaturepath != None:
         try:
             arma_status, _, _ = metadata_func(armaturepath, armaturepath, printme=True) # Should use logging levels instead of printme but it'll do for now.
@@ -323,24 +328,38 @@ def import_glb(filename, directory, existing_objects):
         return None
     return new_objects
 
-def setup_for_import(filepath):
+def setup_for_import(filepath, settings, armaturepath):
     
     _, filename, _ = get_filename_ext(filepath)
     collection = None
 
-    if specified_collection:
+    specified_collection = settings.get("collection_name")
+    reuse_existing_collection = settings.get("reuse_existing_collection")
+    
+    if specified_collection and specified_collection != "":
         trimmed_name = specified_collection
     else:
-        trimmed_name = filename.split(".")[0]
+        import_type = settings.get("import_type")
+        if import_type == "bulk_anim":
+            armature_name = get_filename_ext(armaturepath)[1]
+            trimmed_name = armature_name.split(".")[0]
+            specified_collection = True # keeps them all in one collection
+        else:
+            trimmed_name = filename.split(".")[0]
 
-    if use_existing_collection: ## Add the option to import to selected/active collection, and/or named collection in the UI once it exists.
+# need the bool for 'use existing collection or make new w suffix'.
+
+    if specified_collection or reuse_existing_collection: ## Add the option to import to selected/active collection, and/or named collection in the UI once it exists.
         test = bpy.data.collections.get(trimmed_name)
         if test:
-            #print(f"There is already a collection with this name: {trimmed_name}.")
+            print(f"There is already a collection with this name: {trimmed_name}.")
             collection = test
 
-    if not use_existing_collection or not collection:
+    print(f"Collection: {collection}")
+    if not collection or (collection and not reuse_existing_collection):
+#    if not specified_collection and not collection: # this requires both to be true or it runs. 
         collection = bpy.data.collections.new(trimmed_name)
+        print(f"Collection: {collection}")
 
     try:
         bpy.context.scene.collection.children.link(collection)  ## NOTE: Will fail if the collection is excluded from the view layer. Even if it passed test.
@@ -441,7 +460,7 @@ def attempt_conversion(filepath, armaturepath):
     else:
         print(f"Anything left at the end of this function: {status}, {filename}")
         
-def cleanup(new_objects, status):
+def cleanup(new_objects, status, anim_filename, settings):
     
     # Delete LOD objects ending with _LOD\d+
     lod_pattern = re.compile(r'.*_LOD\d+')
@@ -474,17 +493,41 @@ def cleanup(new_objects, status):
     for obj in non_lod:
         if obj.type == "ARMATURE":
             armature_list.append(obj) # changed back # changed to obj.name from obj.
-            for bone in obj.pose.bones:
-                if bone.custom_shape or custom_bones_on:
+            if settings.get("custom_bones"):
+                new_custom_name = settings.get("custom_bone_obj")
+                all_obj = set(bpy.context.scene.objects)
+                for test in all_obj: ### this is a terrible way to do this.
+                    if test.name == new_custom_name:
+                        primary = test
+                    #this is going to be a next iter, isn't it. It always is.
+                for bone in obj.pose.bones:
                     if bone.custom_shape:
+                        scale_custom_bone = settings.get("scale_bone")
+                        if scale_custom_bone:
+                            bone.use_custom_shape_bone_size = True
+
                         old_ico = bone.custom_shape
                         bone.custom_shape = primary
                         if old_ico != primary:
                             oldicos.add(old_ico)
                     else:
                         bone.custom_shape = primary
- 
+            else:
+                for bone in obj.pose.bones:
+                    if bone.custom_shape:
+                        bone.custom_shape = None # likely won't work. Oh, it does.
+                ## NOTE: This does not remove the original created ico or its collection. Those area remnant of the native importer.
+                # might delete them later, if they're not used by anything after this point?
+                # will look into it. See if they're data linked to anything, if not maybe delete, and then if collection empty, remove it too.
             def fix_bone_orientation():
+
+## NOTE: There are certain dummy bones that don't flip orientation (eg Dummy_R_Foot_01/L, Dummy_R_KneeFX_02/L, Dummy_L_Foot_02/R.) Might be able to use that as a stable reference if it holds across armatures.
+# Also: DummyLFoot02 and DummyLFoot01 both start from the same relative position, but DummyLFoot02 is twice as long, with its tail far above  the joint. DummyLFoot01 meets the joint neatly.
+# Not sure why and don't know what it means.
+
+                donotmove_bones = ["Root_M", ] # just a hardcoded list of bones that should not reorient.
+
+                # will save an armature from the 4.3.2 native importer and compare like bones. See where it's still not quite right.
 
                 context = bpy.context.object.data.edit_bones
                 bpy.ops.object.mode_set(mode='EDIT') # just for set to edit mode, whether it already was or not doesn't seem to error it.
@@ -515,7 +558,18 @@ def cleanup(new_objects, status):
                     if not parent:
                         #print(f"No parent for {bone.name}.")
                         pass
+                    elif parent in donotmove_bones: # think this should work?
+                        continue
                     else:
+                        siblings = bone_dict.get(parent).get("children")
+                        print(f"Number of siblings: {len(siblings)}")
+
+                        if len(siblings) > 1:
+                            print("Too many kids.")
+                            for sib in siblings:
+                                print(sib)
+                            continue
+
                         child = bone.name # could skip this and just keep typing bone.name but I need the clarity for now.
                         #print(f"parent: {parent}, child: {child}")
                         children.add(child)
@@ -533,9 +587,11 @@ def cleanup(new_objects, status):
                     if entry.get("new_tail_pos") == entry.get("tail_pos"):
                         no_movement.append(name)
                 
-                if counter != len(no_movement):
+                if counter != len(no_movement): ## this whole part is silly. 
                     print(f"Total of {counter} bones, {len(no_movement)} did not move. `({no_movement})`")   
                     for bone in no_movement:
+                        if bone in donotmove_bones:
+                            continue
                         parent = bone_dict[bone].get("parent")
                         if not parent:
                             continue
@@ -585,12 +641,18 @@ def cleanup(new_objects, status):
                         if bone:
                             bone.roll = roll
 
-            if status != "animation": # for now, just don't apply the fix to animation. I did used to ahve to retarget because I couldn't fix it automatically. Maybe still true.
-                fix_bone_orientation()
+            #print(f"Object name: {obj.name}")
+            obj.name = anim_filename[1].split(".")[0]
+            #print(f"Anim filename: {anim_filename}")
+            #print(f"New object name: {obj.name}")
 
-    for ico in oldicos: # delete here to stop structRNA errors when they're deleted before all objs have been observes.
-        bpy.data.objects.remove(ico,do_unlink=True)  ### Only needed if there's more that one option. Otherwise it deletes the one it just created and errors.
-      
+            if status != "animation": # for now, just don't apply the fix to animation. I did used to have to retarget because I couldn't fix it automatically. Maybe still true.
+                if settings.get("fix_bones"):
+                    fix_bone_orientation()
+
+    for ico in oldicos:
+        bpy.data.objects.remove(ico,do_unlink=True)
+
     bpy.ops.object.mode_set(mode='OBJECT')
 
     for item in armature_list:
@@ -598,7 +660,7 @@ def cleanup(new_objects, status):
 
     return armature_list
 
-def set_up_bulk_convert(armaturepath, anim_dir):
+def set_up_bulk_convert(armaturepath, anim_dir, settings):
 
     # testing armature: F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2
     # testing dir: #  F:\test\gltf_tests\raw_intdev_anims
@@ -612,13 +674,13 @@ def set_up_bulk_convert(armaturepath, anim_dir):
         print(f"Anim in test list: {anim}")
         filepath = anim_dir + "\\" + anim
         if check_file_exists("testing animation file before bulk conversion", filepath):
-            anim_file = import_process(filepath, armaturepath)
+            anim_file = import_process(filepath, armaturepath, settings)
             imported_anims.append(anim_file)
         else:
             print("No animation file(s) found.")
     return imported_anims
 
-def import_process(file_to_import, armaturepath):
+def import_process(file_to_import, armaturepath, settings):
 
     print(f"About to start conversion: file_to_import = {file_to_import}, armaturepath = {armaturepath}")
     if file_to_import is not None:
@@ -626,11 +688,12 @@ def import_process(file_to_import, armaturepath):
         converted, status = attempt_conversion(file_to_import, armaturepath)
         if converted:
             directory, filename, _ = get_filename_ext(converted)
-            existing_objects = setup_for_import(file_to_import)
+            existing_objects = setup_for_import(file_to_import, settings, armaturepath)
             imported = import_glb(filename, directory, existing_objects)
 
             if imported:
-                imported_files = cleanup(imported, status)
+                anim_filename =  get_filename_ext(file_to_import) # could do this inline but useful to see clearly that it's the anim skel.
+                imported_files = cleanup(imported, status, anim_filename, settings)
                 print("Import successful.")
                 return imported_files
             else:
@@ -644,8 +707,15 @@ def import_process(file_to_import, armaturepath):
         return "No file to import."
 
 def assign_files(file):
+
+## I don't need this here but the syntax is useful:
+# # metadata == True if import_type == "metadata"
+# # ==     metadata = (import_type == "metadata")
+# extendable: 
+#       metadata = import_type in ("metadata", "meta", "md")
+
     print(f"File to import: {file}")
-    if metadata and ".gr2" in str(file).lower():
+    if ".gr2" in str(file).lower():
         print("Checking metadata first.")
         status, _, _ = metadata_func(file)
         return status
@@ -671,7 +741,7 @@ def main(file_1, file_2, settings):
     #    settings = {"collection_name":props.collection_name_override, "import_type":props.import_type, 
     #                "custom_bones":props.use_custom_bone_obj, "custom_bone_obj":props.custom_bone_obj, 
     #                "remove_all_temp":props.remove_temp, "keep_final":props.keep_final}
-        file_list = set_up_bulk_convert(armaturepath, anim_dir)
+        file_list = set_up_bulk_convert(armaturepath, anim_dir, settings)
         return file_list
 
     else:
@@ -691,19 +761,22 @@ def main(file_1, file_2, settings):
         else:
             file_to_import = file_1
 
-        imported_files = import_process(file_to_import, armaturepath)
+        imported_files = import_process(file_to_import, armaturepath, settings)
         file_list = [get_filename_ext(file_to_import)[1], imported_files]
         return file_list
 
 def run(mode, inputs, settings=None):
     metadata_collection = []
-    idx = 1
+
+    initial_setup(mode, settings)
+
     if mode == "metadata":
+        idx = 1
         for file in inputs:
             if "Secondary file (if needed)" in file:
                 metadata_collection.append("[File 2: -- No secondary file --]")
                 continue
-            if ".gr2" not in str(file).lower() and file.strip() != "":
+            if ".gr2" not in str(file).lower() and file.strip() != "": # change this to check if it's a file at all maybe. simple regex? Maybe not worth it.
                 print(f"[WARN] Cannot get metadata for non-GR2 files ({str(file)}).")
                 metadata_collection.append(f"[File {idx}: [{get_filename_ext(file)[1]}] STATUS 6: {status_definitions.get(6)}] \n \n")
                 idx += 1
