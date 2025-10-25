@@ -2,7 +2,7 @@
 
 A Blender 5.0 add-on for importing GR2/DAE models that doesn't rely on OpenCOLLADA. 
 
-With OpenCollada support entirely removed from recent versions of Blender, none of the existing GR2/DAE plugins/addons work anymore. While GR2/DAE files might not be enormously widely used in 2025, I still use them, and while I still use Blender 4.3 primarily, I want it to be possible in 5.0+.
+With OpenCollada support entirely removed from recent versions of Blender, none of the existing GR2/DAE plugins/addons work anymore*. While GR2/DAE files might not be enormously widely used in 2025, I still use them, and while I still use Blender 4.3 primarily, I want it to be possible in 5.0+.
 
 Requires divine.exe and granny2.dll from https://github.com/Norbyte/lslib 
 
@@ -27,3 +27,5 @@ This is a work in progress, please report any issues/suggestions.
   * Actual addon with user preferences and UI panel. <- today's priority.
 
  -- harpoon
+
+ * It turns out I was wrong. `dos2de_collada_importer` still works. I'm going to finish this anyway, because it does some things differently and I think it's worth finishing, but wanted to acknowledge this.
