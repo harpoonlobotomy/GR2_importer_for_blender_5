@@ -27,7 +27,7 @@ Requires `divine.exe` and `granny2.dll` from https://github.com/Norbyte/lslib
 
 ## This is a work in progress, please report any issues/suggestions.
 
- STATE OF THINGS (as of 23/10/2025):
+ STATE OF THINGS (as of 25/10/2025):
   * Basic GR2/DAE/GLB/GLTF import
   * Basic animation imports work but requires manual retargeting - working on this
   * Bulk animation import: multiple animations with a common armature can be imported at once
@@ -37,3 +37,6 @@ Requires `divine.exe` and `granny2.dll` from https://github.com/Norbyte/lslib
   * Converter including the automatic combining of animation GR2s with provided armature GR2s (as animations without armatures cannot be imported to Blender)
 
  -- harpoon
+ 
+ [It turns out I was wrong. dos2de_collada_importer still works. I'm going to finish this anyway, because it does some things differently and I think it's worth finishing, but wanted to acknowledge this.]
+ 

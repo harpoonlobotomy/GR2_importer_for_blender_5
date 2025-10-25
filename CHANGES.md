@@ -47,7 +47,11 @@
 	  * Fixed some of the CLI issues with inconsistent filenames.
 
 # TODO:
-	As of 24/10/25:
+	As of 25/10/25:
+	  * Looked into the adding retargeting as a post-import option, but Blender 5's animation system is... well broken. so I'm leaving that off the todo list for now.
+	  * Delete imported objects of type (eg, delete all but the action data of animation imports (potentially assigning them to a specific one? Not sure.) Maybe. dos2de importer has something like this, worth looking at.
+	  * Figure out why Finger2_R is pointing in a random direction. It's strange, and every other bone is fine... 
+	  * Move control empties with bone orientation fix; currently they're left where the bone tail originally was. 
 	  * Save UI settings to prefs. 
 	  * Sample .blend with custom bones maybe.
 	  * Check for existing obj of the same name (now we're importing the animation names. Can't imagine this'll be useful though. V low priority. May delete later.

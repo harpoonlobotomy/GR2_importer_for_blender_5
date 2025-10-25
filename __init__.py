@@ -1,8 +1,8 @@
 # 2025 HarpoonLobotomy
 
 import bpy
-from bpy.props import StringProperty, BoolProperty, EnumProperty
-from bpy.types import Panel
+from bpy.props import StringProperty, BoolProperty, EnumProperty, IntProperty
+from bpy.types import Panel, Operator, OperatorFileListElement, AddonPreferences, PropertyGroup
 from datetime import datetime
 
 version = 0.3
@@ -16,7 +16,7 @@ bl_info = {
     "description": "Import GR2/DAE models and animations into Blender without Collada (Blender 5.0 compatible)",
     "blender": (5, 0, 0), #will make it backwards compatible once it's fully working in 5, will just need to adapt the api.
     "version": (0, 3, 0),
-    "category": "Object",
+    "category": "Import-Export",
     "location": "Property Panel, Press N in Viewport",
 }
 
@@ -43,7 +43,6 @@ def keep_final_cb(self, context):
 
 def show_popup(text_lines, title=""):
 
-    #  text_lines : list[str] or str (if str, will be split on newlines)
     if text_lines == None:
         text_lines = "Nothing to display."
 
@@ -70,7 +69,7 @@ def show_popup(text_lines, title=""):
 def set_selected_as_custom(self, context):
 
     ## maybe include a couple of premade custom bones? 
-    selected_objects = set(context.selected_objects) #removed 'bpy.'
+    selected_objects = set(context.selected_objects)
 
     if not selected_objects:
         print("No objects selected.")
@@ -94,7 +93,7 @@ def set_selected_as_custom(self, context):
     if len(objects_queue) > 1:
         print(f"{len(objects_queue)} objects selected; please select only one object to set as custom bone.")
         #show_popup(f"{len(objects_queue)} objects selected; please select only one object to set as custom bone.", title="")
-        print("What's the best way to count these. 'How many objects are type mesh...?") #hm.
+        #print("What's the best way to count these. 'How many objects are type mesh...?") #hm.
         return f"{len(objects_queue)} objects selected; please select just one mesh.", 0
     
     if len(objects_queue) == 1:
@@ -104,7 +103,7 @@ def set_selected_as_custom(self, context):
     return "No suitable objects", 0
 
 # === PROPERTY GROUP ===
-class GR2_ImporterProps(bpy.types.PropertyGroup):
+class GR2_ImporterProps(PropertyGroup):
 
     remove_temp: bpy.props.BoolProperty(
         name="Remove temp files",
@@ -155,13 +154,14 @@ class GR2_ImporterProps(bpy.types.PropertyGroup):
         name="Show Advanced Options",
         description="Show or hide advanced options",
         default=False)
-    test_files: BoolProperty(name="test_file_components", default=False) # actually want it to be a button
+    test_files: BoolProperty(name="test_file_components", default=False)
     collection_name_override: StringProperty(name="Collection Name (optional)", default="", description="Collection Name (optional); if not used, the primary input filename will be used for the collection name.")
     reuse_existing_collection: BoolProperty(name="Reuse Coll.", default=True, description="Reuse an existing collection with the correct name if found.")
-    custom_bone_obj: StringProperty(name="Custom Bone Object", default="Ico", description="Select an object to use as a custom bone.") # select from current blend? From file? 
+    custom_bone_obj: StringProperty(name="Custom Bone Object", default="Ico", description="Select an object to use as a custom bone.")
     use_custom_bone_obj: BoolProperty(name="Use custom bones", default=True)
     scale_custom_bone: BoolProperty(name="Scale custom bones", default=False)
     temp_folder: StringProperty(name="Temp folder", default="") # should be in prefs, not here.
+    delete_temp: BoolProperty(name="Delete temp files", default=True, description="Delete temporary files")
     fix_bones: BoolProperty(name="Fix Bone Orientation", default=True, description="Try to reorient bones into proper alignment.")
     open_console: BoolProperty(name="Open console on run", default=True, description="Open Terminal before running import.")
     set_selected_as_custom: StringProperty(name="Set selected object as custom bone", default="", description="Set the selected object as 'custom bone' for the next import . [Can be changed afterwards in Pose Mode: Bone Properties > Viewport Display, Custom Shape > Custom Object]")
@@ -232,7 +232,6 @@ def draw_GR2import_panel(self, context):
         row5.prop(props, "no_popups")
         col2.separator()
 
-
 class GR2_PT_Importer_ShaderPanel(Panel):
     bl_label = "GR2 Importer"
     bl_idname = "GR2_PT_Importer_ShaderPanel"
@@ -253,11 +252,9 @@ class GR2_PT_Importer_3DViewPanel(Panel):
     def draw(self, context):
         draw_GR2import_panel(self, context)
 
-
-
 # === BUTTON HANDLERS ===
 
-class GR2_OT_Importer_Run_Import(bpy.types.Operator):
+class GR2_OT_Importer_Run_Import(Operator):
     # run import_gr2_for_blender5.py, once amended accordingly.
 
     bl_idname = "gr2.run_importer"
@@ -273,6 +270,7 @@ class GR2_OT_Importer_Run_Import(bpy.types.Operator):
         debug_print("general_setup", f" " * 17 + "=" *32 + "\n")
 
         props = context.scene.gr2_importer_props
+        
         if props.import_type == "bulk_anim":
             inputs = [props.armature_file_for_bulk, props.anim_dir]
         else:
@@ -293,7 +291,7 @@ class GR2_OT_Importer_Run_Import(bpy.types.Operator):
         return self.execute(context)
 
 
-class GR2_OT_Test_Files(bpy.types.Operator):
+class GR2_OT_Test_Files(Operator):
     # run the rootreader for any filepaths in file1/file2, no imports.
     
     bl_idname = "gr2.test_files"
@@ -302,12 +300,6 @@ class GR2_OT_Test_Files(bpy.types.Operator):
     
     def execute(self, context):
         metadata_collection = None
-        #filetest_start = datetime.now()
-        #debug_print("general_setup", f"\n" * 6)
-        #debug_print("general_setup", f" " * 13 + "=" * 40)
-        #print("  === GR2 Test process started at", filetest_start, "===")
-        #debug_print("general_setup", f" " * 17 + "=" *32 + "\n")
-
         props = context.scene.gr2_importer_props
         file_1 = props.file_1
         file_2 = props.file_2
@@ -328,7 +320,7 @@ class GR2_OT_Test_Files(bpy.types.Operator):
         return self.execute(context)
 
 
-class GR2_OT_set_custom_bone(bpy.types.Operator):
+class GR2_OT_set_custom_bone(Operator):
     
     bl_idname = "gr2.set_custom_bone"
     bl_label = "Set selection as as custom bone"
@@ -337,7 +329,6 @@ class GR2_OT_set_custom_bone(bpy.types.Operator):
     def execute(self, context):
 
         custom_bone, success = set_selected_as_custom(self, context)
-
         props = context.scene.gr2_importer_props
         if success == 1:
             props.custom_bone_obj = custom_bone # I don't imagine this will work. Oh, it did. Nice.
@@ -348,7 +339,6 @@ class GR2_OT_set_custom_bone(bpy.types.Operator):
 
     def invoke(self, context, event):
         return self.execute(context)
-
 
 # === REGISTRATION ===
 classes = (

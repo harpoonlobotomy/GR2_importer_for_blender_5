@@ -19,34 +19,14 @@ armaturepath = None # here to make sure there's always something. I kept comment
 import_list = [r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\Resources\Proxy_INTDEV_A.GR2", r"F:\test\gltf_tests\rpremixed anim and skel as skel to mesh.gr2", r"F:\test\gltf_tests\randompeaceintdev defaults copyskel.gr2", r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2", r"F:\test\gltf_tests\random_peace_to_intdev_then_intdev_cin_merged_with_the_combined_copy_skel.gr2", r"F:\test\gltf_tests\random_peace_to_intdev_then_intdev_cin_merged_with_the_combined.gr2", r"F:\test\gltf_tests\random_peace_with_intdev_cin.gr2", 
 r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\OwlBear\OWLBEAR_Cub_Rig\_Construction\Owlbear_Cub_Rig_DFLT_CINE_Curious_HeadTilt_01.GR2", r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\OwlBear\OWLBEAR_Cub_Base.GR2", r"F:\test\gltf_tests\owlbear_mesh.dae", r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Rig\INTDEV_Rig_DFLT_IDLE_Random_Peace_01.GR2", r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2", r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2"]
 
-#file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\Resources\Proxy_INTDEV_A.GR2"
-#file_to_import = r"F:\test\glb_tests\rpremixed anim and skel as skel to mesh.gr2" # the name lies, it's just intdev cin.
-#file_to_import = r"F:\test\glb_tests\randompeaceintdev defaults copyskel.gr2" ## skel +  animation, no mesh
-## file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2"
-#armaturepath = r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2"
-
-#file_to_import = r"F:\test\glb_tests\random_peace_to_intdev_then_intdev_cin_merged_with_the_combined_copy_skel.gr2"
-#file_to_import = r"F:\test\glb_tests\random_peace_to_intdev_then_intdev_cin_merged_with_the_combined.gr2" # skel + anim, no mesh, made in stage 2 of testing.
-#file_to_import = r"F:\test\glb_tests\random_peace_with_intdev_cin.gr2" # done in converterapp, random peace as input file, intdev cin as armature. copy skeleton from and copy skeleton both on. Everyting else at defaults.
-#file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\OwlBear\OWLBEAR_Cub_Rig\_Construction\Owlbear_Cub_Rig_DFLT_CINE_Curious_HeadTilt_01.GR2" ## head tilt animation
-#armaturepath = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\OwlBear\OWLBEAR_Cub_Base.GR2"
-
-#file_to_import = r"F:\test\glb_tests\owlbear_mesh.dae"
-
-#file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Rig\INTDEV_Rig_DFLT_IDLE_Random_Peace_01.GR2"
-#armaturepath =
 file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2"
 
 #inputs = None, None#armaturepath, file_to_import
 
-version = "0.6" # adding console control, only checking for relevant files as needed, making sure the glTF addon is enabled when run via the init.
-                    #refixed the armature naming/collections, added custom bone support (either by writing the obj name, or setting the selected obj in the UI.)
+version = "0.61" # just some cleanup. 
 
-#mode = "metadata_only"#"all"
-#mode = "mass_metadata" #"all"#"metadata only"  # other options: "all", "metadata only", "mass_metadata"
-#metadata = True
-#specified_collection = "bulk_anim_test_1"
-#fix_bones = True
+# Turns out the retargeter is broken in Blender v5, so that's hurt my soul a little. 
+
 json_output = False
 jsonout_file = f"F:\\test\\gr2_metadata.json" #None
 
@@ -57,12 +37,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-#use_existing_collection = True
-#custom_bones_on = True
-
 divineexe = r"F:\Blender\Addons etc\Packed\Tools\Divine.exe"
-divinedir = str(Path(divineexe).parent) #testing
-#divinedir = r"F:\Blender\Addons etc\Packed\Tools"
+divinedir = str(Path(divineexe).parent)
 rootreader = r"D:\Git_Repos\GR2_importer_for_blender_5\rootreader\bin\Debug\net8.0\rootreader.exe"
 
 status_definitions = {
@@ -92,9 +68,8 @@ def initial_setup(mode, settings):
 
 #--- Check required files exist. --- #
     def check_for_exe(path):
-        #for path in [divineexe, rootreader]: # prev just checked both, this time only check the one needed.
         if not Path(path).is_file():
-            print(f"Required file not found: {path}. Please check the paths in the script.") # should this be filename instead?
+            print(f"Required file not found: {path}. Please check the paths in the script.") 
             return list(f"Cannot initialise, required file not found: `{path}`.", "Please add correct path in Add-on Preferences.")
 
     check_for_exe(path)
@@ -110,7 +85,6 @@ def initial_setup(mode, settings):
             bpy.ops.wm.console_toggle()
 
     if mode == "import":
-        # Make sure the native glb importer is enabled for later. #
         default, enabled = check("io_scene_gltf2")
         if not enabled:
             try:
@@ -126,8 +100,11 @@ def print_me(status, *args, **kwargs):
 
 def get_filename_ext(filepath = None):
     if not filepath:
-        return None, None
+        return None, None, None
     
+    print(filepath)
+    if "\\" not in filepath:
+        return None, None, None
     directory, filename = str(filepath).rsplit("\\", 1)
     ext = filename.split(".")[-1]
     return directory, filename, ext.lower()
@@ -140,10 +117,9 @@ def get_temppath():
 
 def check_file_exists(origin, filepath):
 
-    if filepath == None or not Path(filepath).is_file(): # test this.
+    if filepath == None or not Path(filepath).is_file():
         print(f"No file provided for {origin}.")
         return False
-
     return True
 
 def get_metadata(filepath, printme):
@@ -159,12 +135,12 @@ def get_metadata(filepath, printme):
     meshes, armatures, animations = 0, 0, 0
     if result.returncode == 0:
         root_data = json.loads(result.stdout)
-        if "Skeletons" in root_data and root_data.get("Skeletons") is not None:
-            armatures = 1#len(root_data.get('Skeletons', [])) # making it '1' to work with the binary masking
+        if ("Skeletons" in root_data and root_data.get("Skeletons") is not None):
+            armatures = 1
         if "Meshes" in root_data and root_data.get("Meshes") is not None:
-            meshes = 1#len(root_data.get('Meshes', []))
+            meshes = 1
         if "Animations" in root_data and root_data.get("Animations") is not None:
-            animations = 1#len(root_data.get('Animations', []))
+            animations = 1
         if "GR2Tag" in root_data and root_data.get("GR2Tag") is not None: # Does this always exist? I think so. # not sure if this is useful at all  yet. Maybe for partial automation of getting matching skeletons. Need to find out how to match to LSF data.
             extra_data.update({"GR2Tag": root_data.get('GR2Tag')})
         extra_data.update({"Internal_Filename": root_data['FromFileName']}) # I think  this is guaranteed to always exist? Would error in the rootreader if not.
@@ -174,7 +150,9 @@ def get_metadata(filepath, printme):
         print_me(printme, f"Failed to get metadata: {result.stderr}")
         return None, None, None, None
 
-def metadata_func(input_file, armaturepath=None, printme=True):
+def metadata_func(input_file, armaturepath=None, printme=True): 
+    # need to redo this. 
+    #need to get basic status of both if >1, /then/ decide armature role etc. not at the first found test subject.
 
     filename = get_filename_ext(input_file)[1]
     extra_data = {}
@@ -184,21 +162,20 @@ def metadata_func(input_file, armaturepath=None, printme=True):
         print_me(printme, f"Import file `{filename}` does not exist. Aborting metadata check.")
         return 00, None, filename
     
+    if ".dae" in str(input_file).lower():
+        return 7, extra_data, filename
+    if ".glb" in str(input_file).lower() or ".gltf" in str(input_file).lower():
+        return 8, extra_data, filename
+    
     if input_file == armaturepath:
         print_me(printme, "Testing armature file for metadata:")
         skel_meshes, skel_armatures, skel_animations, extra_data = get_metadata(armaturepath, printme)
-        if (skel_meshes, skel_armatures, skel_animations) == (0, 0, 1): # this part feels repetitive with 'get_status' now it's updated. Need to fix.
+        if (skel_meshes, skel_armatures, skel_animations) == (0, 0, 1):
             return 4, extra_data, filename
     
-    print_me(printme, f"Checking metadata for `{filename}`:")
-    if armaturepath is not None and not check_file_exists("metadata: armature path", armaturepath): ## Not sure if this works. 'If it says there's a path but the file doesn't exist' is the intent.
+    elif armaturepath is not None and not check_file_exists("metadata: armature path", armaturepath):
         armaturepath = None
         print_me(printme, f"Armature path `{filename}` is not a valid file. Ignoring.")
-
-    if ".dae" in str(input_file).lower(): # check these first, don't bother running them for metadata
-        return 7, extra_data, filename
-    elif ".glb" in str(input_file).lower() or ".gltf" in str(input_file).lower():
-        return 8, extra_data, filename
 
     def get_status(input_file, armaturepath):
         ARM, MSH, ANIM = 1, 2, 4
@@ -209,8 +186,10 @@ def metadata_func(input_file, armaturepath=None, printme=True):
             anim = animations * ANIM
             content = mesh + armature + anim
 
-            if content == 4:
+            print(meshes, armatures, animations, extra_data)
+            if content == 4: ## THIS PART has to happen after both have gone through the status check. 
                 if check_file_exists("metadata: armature path", armaturepath):
+                    print(f"There is an existing file for this animation: {armaturepath}")
                     skel_meshes, skel_armatures, skel_animations, _ = get_metadata(armaturepath, printme)
                     if not skel_armatures:
                         return 42, extra_data
@@ -218,6 +197,7 @@ def metadata_func(input_file, armaturepath=None, printme=True):
                         return 41, extra_data
                     print_me(printme, "Armature file contains more than just armature. Tentatively returning; may fail.")
                     return 43, extra_data
+                print(f"The armaturepath file does not exist: {armaturepath}")
                 return 42, extra_data
 
             return content, extra_data
@@ -226,6 +206,7 @@ def metadata_func(input_file, armaturepath=None, printme=True):
             print_me(printme, f"FAILED TO GET METADATA: {e}")
             return 0, extra_data
 
+    print_me(printme, f"Checking metadata for `{filename}`:")
     status, extra_data = get_status(input_file, armaturepath)
     print_me(printme, f"[{filename}] STATUS {status}: {status_definitions.get(status)} \n \n")
     return status, extra_data, filename
@@ -233,13 +214,12 @@ def metadata_func(input_file, armaturepath=None, printme=True):
 def mass_metadata(input_file_list):
 
     metadata_dict = {}
-
     for file in input_file_list:
         if "gr2" not in file.lower():
             _, filename, _ = get_filename_ext(file)
             metadata_dict[filename] = {"local_file": file, "status": f"6: {status_definitions.get(6)}"}
         else:
-            status, extra_data, filename = metadata_func(file, armaturepath, printme = False) # now prints internally, don't need to print the prologue.
+            status, extra_data, filename = metadata_func(file, armaturepath, printme = False)
             metadata_dict[filename] = {"local_file": file, "status": f"{status}: {status_definitions.get(status)}", "GR2Tag": extra_data.get("GR2Tag"), "Internal_Filename": extra_data.get("Internal_Filename")} #moved these here, move back to separate 'if extra_data' if it causes errors.
 
     if json_output:
@@ -247,7 +227,6 @@ def mass_metadata(input_file_list):
         with open(jsonout_file, "w+") as f:
             json.dump(metadata_dict, f, indent=2)
         
-
 #### IMPORT HELPERS ####
 def conform_to_armature(filepath, armaturepath):
 
@@ -269,7 +248,6 @@ def conform_to_armature(filepath, armaturepath):
         except Exception as e:
             print(f"Failed to generate GR2 with new skeleton. Returning early. Reason: {e}")
             return None
-
     return f"{temppath}.{newfile_ext}"
 
 def convert_to_DAE(filepath, temppath):
@@ -290,9 +268,7 @@ def convert_to_GLB(temppath, fromtype):
     else:
         temppath = str(temppath)
     temppath2 = str(get_temppath())
-
     fromtype = fromtype.replace(".", "")
-    
     #print(f"Divine CLI command for {fromtype.upper()} to GLB conversion:")
     #print(f'"{divineexe}" --loglevel all -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o glb -a convert-model -e flip-uvs')
     #print()
@@ -347,19 +323,16 @@ def setup_for_import(filepath, settings, armaturepath):
         else:
             trimmed_name = filename.split(".")[0]
 
-# need the bool for 'use existing collection or make new w suffix'.
-
     if specified_collection or reuse_existing_collection: ## Add the option to import to selected/active collection, and/or named collection in the UI once it exists.
         test = bpy.data.collections.get(trimmed_name)
         if test:
-            print(f"There is already a collection with this name: {trimmed_name}.")
+            print(f"Existing collection found with this name: {trimmed_name}.")
             collection = test
 
-    print(f"Collection: {collection}")
+    #print(f"Collection: {collection}")
     if not collection or (collection and not reuse_existing_collection):
-#    if not specified_collection and not collection: # this requires both to be true or it runs. 
         collection = bpy.data.collections.new(trimmed_name)
-        print(f"Collection: {collection}")
+        #print(f"Collection: {collection}")
 
     try:
         bpy.context.scene.collection.children.link(collection)  ## NOTE: Will fail if the collection is excluded from the view layer. Even if it passed test.
@@ -376,16 +349,13 @@ def setup_for_import(filepath, settings, armaturepath):
 
     layer_collection = bpy.context.view_layer.layer_collection.children[collection.name] ## this will fail if the collection isn't linked to the view layer.
     bpy.context.view_layer.active_layer_collection = layer_collection
-
     existing_objects = set(bpy.context.scene.objects)
 
     return existing_objects
 
 def attempt_conversion(filepath, armaturepath):
-
 # I want to add a json output for conversion. The start files/types, successes and failures. Should make it far clearer to find the patterns of what succeeds/fails if I don't have to remember across runs.
     anim_or_static = "static"
-    
     has_anim = [4,41,42,43,5,7]
     
     print("\n" *20)
@@ -393,9 +363,7 @@ def attempt_conversion(filepath, armaturepath):
     print()
 
     status, _, filename = metadata_func(filepath, armaturepath, printme = True)
-    ext = get_filename_ext(filepath)[2] # check if this works.
-    # if not, go back to // _, filename, ext = get_filename_ext(filepath)
-
+    ext = get_filename_ext(filepath)[2]
     if status in has_anim:
         anim_or_static = "animation"
     
@@ -438,6 +406,11 @@ def attempt_conversion(filepath, armaturepath):
             print("Merging of animation + armature did not result in a file with both animation and armature. Will fail.")
             return glb_path, anim_or_static
         return None, anim_or_static
+
+    if status == 5:
+        print("GR2 armature with animation")
+        glb_path = convert_to_GLB(filepath, get_filename_ext(filepath)[2])
+        return glb_path, anim_or_static
 
     if status == 6:
         if "dae" in ext:
@@ -502,7 +475,7 @@ def cleanup(new_objects, status, anim_filename, settings):
                     #this is going to be a next iter, isn't it. It always is.
                 for bone in obj.pose.bones:
                     if bone.custom_shape:
-                        scale_custom_bone = settings.get("scale_bone")
+                        scale_custom_bone = settings.get("scale_custom_bone")
                         if scale_custom_bone:
                             bone.use_custom_shape_bone_size = True
 
@@ -521,9 +494,9 @@ def cleanup(new_objects, status, anim_filename, settings):
                 # will look into it. See if they're data linked to anything, if not maybe delete, and then if collection empty, remove it too.
             def fix_bone_orientation():
 
-## NOTE: There are certain dummy bones that don't flip orientation (eg Dummy_R_Foot_01/L, Dummy_R_KneeFX_02/L, Dummy_L_Foot_02/R.) Might be able to use that as a stable reference if it holds across armatures.
-# Also: DummyLFoot02 and DummyLFoot01 both start from the same relative position, but DummyLFoot02 is twice as long, with its tail far above  the joint. DummyLFoot01 meets the joint neatly.
-# Not sure why and don't know what it means.
+                ## NOTE: There are certain dummy bones that don't flip orientation (eg Dummy_R_Foot_01/L, Dummy_R_KneeFX_02/L, Dummy_L_Foot_02/R.) Might be able to use that as a stable reference if it holds across armatures.
+                # Also: DummyLFoot02 and DummyLFoot01 both start from the same relative position, but DummyLFoot02 is twice as long, with its tail far above  the joint. DummyLFoot01 meets the joint neatly.
+                # Not sure why and don't know what it means.
 
                 donotmove_bones = ["Root_M", ] # just a hardcoded list of bones that should not reorient.
 
@@ -649,6 +622,7 @@ def cleanup(new_objects, status, anim_filename, settings):
             if status != "animation": # for now, just don't apply the fix to animation. I did used to have to retarget because I couldn't fix it automatically. Maybe still true.
                 if settings.get("fix_bones"):
                     fix_bone_orientation()
+            #fix_bone_orientation()
 
     for ico in oldicos:
         bpy.data.objects.remove(ico,do_unlink=True)
@@ -666,7 +640,6 @@ def set_up_bulk_convert(armaturepath, anim_dir, settings):
     # testing dir: #  F:\test\gltf_tests\raw_intdev_anims
     print("Warning: May take a while if there are many files to convert.")
     imported_anims = [f"Armature used: {get_filename_ext(armaturepath)[1]}"]
-    #get filelist from dir
     import os
     test_list = os.listdir(anim_dir)
     print(f"Test list: {test_list}")
@@ -694,6 +667,10 @@ def import_process(file_to_import, armaturepath, settings):
             if imported:
                 anim_filename =  get_filename_ext(file_to_import) # could do this inline but useful to see clearly that it's the anim skel.
                 imported_files = cleanup(imported, status, anim_filename, settings)
+
+                ### Add custom properties with import settings (y-up, flip mesh, etc etc) to armature/mesh
+                # see 'paper trailing' here: https://github.com/SWTOR-Slicers/Granny2-Plug-In-Blender-2.8x
+
                 print("Import successful.")
                 return imported_files
             else:
@@ -749,18 +726,22 @@ def main(file_1, file_2, settings):
         print(f"f1 status: {f1_status}")
         f2_status = assign_files(file_2)
         print(f"f2 status: {f2_status}")
-    #allows for more varied armature files, not sure whether it's good or not.
-        if file_1 in has_armature and file_2 not in has_armature and f2_status not in [0, 00, None]: # has armature
+        if f1_status in has_armature and f2_status not in has_armature and f2_status not in [0, 00, None]: # has armature (Should this be checking that neither f1 or f2 are nulled?)
             file_to_import = file_2
             armaturepath = file_1
-        elif file_2 in has_armature and file_1 not in has_armature and f1_status not in [0, 00, None]: # has armature
+            print("File 1 has armature, file 2 doesn't.")
+        elif f2_status in has_armature and f1_status not in has_armature and f1_status not in [0, 00, None]: # has armature
             file_to_import = file_1
             armaturepath = file_2
+            print("File 2 has armature, file 1 doesn't.")
         if file_to_import is None and armaturepath != None:
             file_to_import = armaturepath
+            print("File 1 doesn't exist, armature does.")
         else:
             file_to_import = file_1
+            print("Nothing else applies, assigning file 1 as file to import.")
 
+        print(f"About to enter import process. File to import: {file_to_import}. Armaturepath: {armaturepath}")
         imported_files = import_process(file_to_import, armaturepath, settings)
         file_list = [get_filename_ext(file_to_import)[1], imported_files]
         return file_list
@@ -769,8 +750,11 @@ def run(mode, inputs, settings=None):
     metadata_collection = []
 
     initial_setup(mode, settings)
-
+    armaturepath = None
     if mode == "metadata":
+        for file in inputs:
+            if metadata_func(file, file, True)[0] == 1: # run this first just to see. Later rewrite it to test 'is one of these an armature' after the initial check, right now the order's all wrong. Going with this for now because I need to test something else first.
+                armaturepath = file
         idx = 1
         for file in inputs:
             if "Secondary file (if needed)" in file:
@@ -786,7 +770,9 @@ def run(mode, inputs, settings=None):
                 metadata_collection.append(f"[File {idx}: STATUS 0: No Filepath] \n \n")
                 idx += 1
                 continue
-            status, _, filename = metadata_func(file_to_import, None, False)
+
+
+            status, _, filename = metadata_func(file, armaturepath, True) #temporarily true for troubleshooting.
             metadata_collection.append(f"[File {idx}: [{filename}] STATUS {status}: {status_definitions.get(status)}] \n \n")
             idx += 1
 
@@ -798,4 +784,3 @@ def run(mode, inputs, settings=None):
         [file_1, file_2] = inputs
         file_list = main(file_1, file_2, settings)
         return file_list
-
