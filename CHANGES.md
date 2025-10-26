@@ -4,10 +4,25 @@
 
 
 # CURRENT:
+	Version 0.6:
+	  (* Made so many little commmits on the test branch, but then merged commits instead of squashing so I may as well have done them on the main branch from the start. Ah well.)
+	  * Added open-console bool, use existing collection, disable popups, custom bone bool + 'set from selection' to UI, all working.
+	  * Added initial setup to run from the addon (checking for required files, checking import addon is enabled etc)
+	  * Fixed the Collection naming; now defaults to the armature name unless something else is specified.
+	  * Fixed armature naming; non-animation are named for the primary import object, animation GR2s are named for the animation file.
+          ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ 
+	  
+	Version 0.55:
+	  * Improvement to bone orientation, no longer moves towards an arbitrary child. Also added the option in the UI to turn off the bone fix for the current import.
+	  * Now allows for custom bones by looking for a named obj in the blend file. Needs a far better way of doing it but it does work, so it's a placeholder.
+		  
+	Version 0.54:
+	  * Bulk importing of animations is now fully supported.
+	  * Import and metadata check now works via the UI panel.
+		  
 	Version 0.5:
 	  * Basic functionality of the Blender addon is implemented.
 	  * Changed the status enums to work with binary mask, much neater now.
-          ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ 
 		  
 	Version 0.43:
 	  * Stopped the bone orientation from being applied to animations. 
@@ -32,16 +47,26 @@
 	  * Fixed some of the CLI issues with inconsistent filenames.
 
 # TODO:
-	As on 22/10/25:
+	As of 25/10/25:
+	  * Looked into the adding retargeting as a post-import option, but Blender 5's animation system is... well broken. so I'm leaving that off the todo list for now.
+	  * Delete imported objects of type (eg, delete all but the action data of animation imports (potentially assigning them to a specific one? Not sure.) Maybe. dos2de importer has something like this, worth looking at.
+	  * Figure out why Finger2_R is pointing in a random direction. It's strange, and every other bone is fine... 
+	  * Move control empties with bone orientation fix; currently they're left where the bone tail originally was. 
+	  * Save UI settings to prefs. 
+	  * Sample .blend with custom bones maybe.
+	  * Check for existing obj of the same name (now we're importing the animation names. Can't imagine this'll be useful though. V low priority. May delete later.
+	  * The panel options have gotten a bit busy. Need to subcategorise.
+	  
+	As of 22/10/25:
 	  * Prefs json is in the works, Blender addon is baseline functional.
 	As of 21/10/25:
 	  * Add a database lookup for anim/skel combinations. If not 'GR2Tag', can just use the filename or potentially internal filename. (Probably the former more than the latter.)
 	  * Set up a prefs json for current filepaths once the UI is in.
-	  * Add the option to batch import animations from a folder or list.
+	  DONE Add the option to batch import animations from a folder or list.
 	  * If I pull the duration/framerate from the metadata, I could set it to have the frames match the imported anim. Wouldn't need it that often but might be interesting...
 	  * Find out how "GR2Tag" applies in the LSF files, see if it can be used for assigning correct skeleton file to anim files.
 	  * Automate parentage of imported animations to mesh/obj (optional)
-	  * Test for 0-size generated files. Currently they're discovered with the metadata checker, but return the same failure error as viable non-GR2 inputs.
+	  DONE Test for 0-size generated files. Currently they're discovered with the metadata checker, but return the same failure error as viable non-GR2 inputs.
 	  * Bone orientation needs calibration; currently is better than importing without fix but is inconsistent. Need to figure out the rules internally for why/when it flips on x/y to be able to compensate.
 			- Refer to "bpy.ops.wm.collada_import(filepath=str(collada_path), fix_orientation=True)" from Blender 4.3.2 for the original orientation fixes.
 	  * Imports can be optimised, temp files need management. Currently all temp files are simply left in the temp folder. 
