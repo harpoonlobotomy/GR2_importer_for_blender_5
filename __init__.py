@@ -5,7 +5,7 @@ from bpy.props import StringProperty, BoolProperty, EnumProperty, IntProperty
 from bpy.types import Panel, Operator, OperatorFileListElement, AddonPreferences, PropertyGroup
 from datetime import datetime
 
-version = 0.3
+version = 0.32
 #22/10/25.
 # Initial functions in progress.
 # - harpoon
@@ -15,7 +15,7 @@ bl_info = {
     "author": "harpoonLobotomy",
     "description": "Import GR2/DAE models and animations into Blender without Collada (Blender 5.0 compatible)",
     "blender": (5, 0, 0), #will make it backwards compatible once it's fully working in 5, will just need to adapt the api.
-    "version": (0, 3, 0),
+    "version": (0, 3, 2),
     "category": "Import-Export",
     "location": "Property Panel, Press N in Viewport",
 }
@@ -71,36 +71,34 @@ def set_selected_as_custom(self, context):
     ## maybe include a couple of premade custom bones? 
     selected_objects = set(context.selected_objects)
 
-    if not selected_objects:
-        print("No objects selected.")
-        #show_popup("No objects selected,")
-        return "No objects selected.", 0
-
-    if len(selected_objects) == 1:
+    if selected_objects:
+        if len(selected_objects) == 1:
+            for selection in selected_objects:
+                if selection.type == "MESH":
+                    return selection.name, 1
+                return selection.name, 0
+        objects_queue = [] # should only run if >1 mesh
         for selection in selected_objects:
-            if selection.type == "MESH":
-                return selection.name, 1
-    
-    if len(selected_objects) > 1:
-        objects_queue = []
-        for selection in objects_queue:
             if selection.type != "MESH":
                 print("Non mesh object selected; only mesh can be custom bone, ignoring.")
                 continue
             else:
                 objects_queue.append(selection.name)
+    else:
+        print("No objects selected.")
+        #show_popup("No objects selected,")
+        return "No objects selected.", 0
 
-    if len(objects_queue) > 1:
-        print(f"{len(objects_queue)} objects selected; please select only one object to set as custom bone.")
-        #show_popup(f"{len(objects_queue)} objects selected; please select only one object to set as custom bone.", title="")
-        #print("What's the best way to count these. 'How many objects are type mesh...?") #hm.
-        return f"{len(objects_queue)} objects selected; please select just one mesh.", 0
-    
     if len(objects_queue) == 1:
         for selection in objects_queue:
             return selection.name, 1
         
-    return "No suitable objects", 0
+    if len(objects_queue) > 1:
+        print(f"{len(objects_queue)} meshes selected; please select only one object to set as custom bone.")
+        #show_popup(f"{len(objects_queue)} objects selected; please select only one object to set as custom bone.", title="")
+        return f"{len(objects_queue)} objects selected; please select just one mesh.", 0
+    
+    return "No suitable objects", 0 # just in case anything slips through. Shouldn't be necessary.
 
 # === PROPERTY GROUP ===
 class GR2_ImporterProps(PropertyGroup):
@@ -108,52 +106,43 @@ class GR2_ImporterProps(PropertyGroup):
     remove_temp: bpy.props.BoolProperty(
         name="Remove temp files",
         description="Remove all temp files generated in the process.",
-        default=False,
-        update=remove_temp_cb,
-    )
+        default=False, update=remove_temp_cb)
+
     keep_final: bpy.props.BoolProperty(
         name="Keep final file only",
         description="Keep the final .glb file, remove any other generated temp files.",
-        default=False,
-        update=keep_final_cb,
-    )
+        default=False, update=keep_final_cb)
+    
     import_type: EnumProperty(
         name="Import Type",
         items=(
             ("default", "Default", "Default import (1 GR2 file with optional armature)"),
             ("bulk_anim", "Bulk Animation", "Import multiple animations with a common armature"),
-        ),
-        description="",
-        default="default",
-    )
+        ), description="", default="default")
+    
     file_1: StringProperty(
         name="",
         default=r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2",
-        description="Primary import file",
-        subtype='FILE_PATH'
-    )
+        description="Primary import file", subtype='FILE_PATH')
+    
     file_2: StringProperty(     # add a third later maybe ### Would love the option of selecting multiple, instead of just single or dir.
-        name="",
-        default="Secondary file (if needed)",
-        description="Secondary import file",
-        subtype="FILE_PATH"
-    )
+        name="", default="Secondary file (if needed)",
+        description="Secondary import file", subtype="FILE_PATH")
+    
     armature_file_for_bulk: StringProperty(
         name="", 
         default=r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2",
         description="Armature file to conform animation files to",
         subtype="FILE_PATH")
-### idk if I want to have the armature file for bulk import separate from the regular primary. Better to be able to switch between them or to have the top line consistent?
+    
     anim_dir: StringProperty(
         name="",
         default=r"F:\test\gltf_tests\raw_intdev_anims",
-        description="Directory of armature files",
-        subtype="DIR_PATH"
-    )
+        description="Directory of armature files", subtype="DIR_PATH")
+    
     show_advanced_options: BoolProperty(
-        name="Show Advanced Options",
-        description="Show or hide advanced options",
-        default=False)
+        name="Show Advanced Options", description="Show or hide advanced options", default=False)
+    
     test_files: BoolProperty(name="test_file_components", default=False)
     collection_name_override: StringProperty(name="Collection Name (optional)", default="", description="Collection Name (optional); if not used, the primary input filename will be used for the collection name.")
     reuse_existing_collection: BoolProperty(name="Reuse Coll.", default=True, description="Reuse an existing collection with the correct name if found.")
@@ -255,7 +244,6 @@ class GR2_PT_Importer_3DViewPanel(Panel):
 # === BUTTON HANDLERS ===
 
 class GR2_OT_Importer_Run_Import(Operator):
-    # run import_gr2_for_blender5.py, once amended accordingly.
 
     bl_idname = "gr2.run_importer"
     bl_label = "Run Importer Logic"
@@ -331,10 +319,9 @@ class GR2_OT_set_custom_bone(Operator):
         custom_bone, success = set_selected_as_custom(self, context)
         props = context.scene.gr2_importer_props
         if success == 1:
-            props.custom_bone_obj = custom_bone # I don't imagine this will work. Oh, it did. Nice.
+            props.custom_bone_obj = custom_bone
         else:
-            props.custom_bone_obj = "" # sets to blank if nothing selected when run, will revert to icos
-            #       need to turn custom bones off fully, currently the button does nothing.
+            props.custom_bone_obj = ""
         return {'FINISHED'}
 
     def invoke(self, context, event):

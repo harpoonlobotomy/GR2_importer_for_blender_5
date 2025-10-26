@@ -3,16 +3,10 @@
 #changing the name: GR2 Importer 2025, instead of 'GR2 Importer for Blender 5'. 
 # #Shouldn't be too hard to make it backwards compatible with 4.3~, so a year just to indicate 'this is modern' feels better than a specific blender release.
 
-# Collada import replacement for blender 5.0
-# Not perfect, but at present it does successfully import GR2 and DAE, with a start on bone alignment. 
-# Still needs more work but it does basically do what I need it to. Meshes + armatures are functional. Animations import, but obviously the bone misalignment is most apparent there.
-
 # No export functionality at all yet, may implement it later but I only need import for myself so that's my focus.
- 
 #  -- harpoon
   
 # 22/10/2025
-
 
 armaturepath = None # here to make sure there's always something. I kept commenting it out in testing.
 
@@ -57,6 +51,7 @@ status_definitions = {
 }
 
 has_armature = [1,3,5,7]
+null_status = [0, 00, None, ""]
 
 def initial_setup(mode, settings):
 
@@ -94,6 +89,7 @@ def initial_setup(mode, settings):
                 print("Please enable the 'glTF 2.0 Format' addon manually in Blender preferences and try again.")
                 return list(f"Failed to enable glTF Importer: {e}", "Please enable `glTF 2.0 Format` addon manually in Blender Add-ons and try again.")
 
+## === Little utilities ===
 def print_me(status, *args, **kwargs):
     if status:
         print(*args, **kwargs)
@@ -122,6 +118,7 @@ def check_file_exists(origin, filepath):
         return False
     return True
 
+
 def get_metadata(filepath, printme):
 
     extra_data = {"GR2Tag": None, "Internal_Filename": None}
@@ -129,57 +126,62 @@ def get_metadata(filepath, printme):
     result = subprocess.run(
         [rootreader, filepath],
         capture_output=True,
-        text=True, cwd=divinedir ### `cwd`:  set to divine dir to ensure any dependent files are found.
-    )
+        text=True, cwd=divinedir) ### `cwd`:  set to divine dir to ensure any dependent files are found.
+
+    print(f"Ran subprocess on {filepath}")
 
     meshes, armatures, animations = 0, 0, 0
     if result.returncode == 0:
         root_data = json.loads(result.stdout)
+
+        output_file = r"F:\\test\\import_gr2_root_data.json"
+        with open(output_file, "w+") as f:
+            json.dump(root_data, f, indent=4)
+        #with open(log_path, "w") as f:
+            #json.dump(existing_data, f, indent=2)
+            # from dos2de (norbyte's version): context.scene.ls_properties.metadata_version = collada.ColladaMetadataLoader.LSLIB_METADATA_VERSION
+            # referring to here: C:\Users\Gabriel\AppData\Roaming\Blender Foundation\Blender\5.1\extensions\user_default\io_scene_dos2de\collada.py
+            #which has all this:
+                    #self.root = et.parse(collada_path).getroot()
+                    #self.load_root_profile(context)
+                    #anim_settings = self.find_anim_settings()
+                    #self.load_mesh_profiles()
+                    #self.load_armature_profiles()
+                    #if anim_settings is not None:
+                    #    self.load_anim_profile(context, anim_settings)
+            # Wish I'd thought to just print the entire thing before I stripped it. Would have been good to have a full reference. Oh well. Will do it later today.
+
         if ("Skeletons" in root_data and root_data.get("Skeletons") is not None):
             armatures = 1
         if "Meshes" in root_data and root_data.get("Meshes") is not None:
             meshes = 1
         if "Animations" in root_data and root_data.get("Animations") is not None:
             animations = 1
-        if "GR2Tag" in root_data and root_data.get("GR2Tag") is not None: # Does this always exist? I think so. # not sure if this is useful at all  yet. Maybe for partial automation of getting matching skeletons. Need to find out how to match to LSF data.
-            extra_data.update({"GR2Tag": root_data.get('GR2Tag')})
-        extra_data.update({"Internal_Filename": root_data['FromFileName']}) # I think  this is guaranteed to always exist? Would error in the rootreader if not.
+        if "GR2Tag" in root_data and root_data.get("GR2Tag") is not None:
+            extra_data.update({"GR2Tag": root_data['GR2Tag']})
+        if "FromFileName" in root_data and root_data.get("FromFileName") is not None:
+            extra_data.update({"Internal_Filename": root_data['FromFileName']})
+
+        print(f"In get_metadata after root_data: Filename: meshes: {meshes}, armatures: {armatures}, animations: {animations}, extra_data: {extra_data}")
         return meshes, armatures, animations, extra_data
     
     else:
         print_me(printme, f"Failed to get metadata: {result.stderr}")
         return None, None, None, None
-
-def metadata_func(input_file, armaturepath=None, printme=True): 
-    # need to redo this. 
-    #need to get basic status of both if >1, /then/ decide armature role etc. not at the first found test subject.
-
-    filename = get_filename_ext(input_file)[1]
-    extra_data = {}
-
-    import_exists = check_file_exists(f"metadata: {filename}", input_file)
-    if not import_exists:
-        print_me(printme, f"Import file `{filename}` does not exist. Aborting metadata check.")
-        return 00, None, filename
     
-    if ".dae" in str(input_file).lower():
-        return 7, extra_data, filename
-    if ".glb" in str(input_file).lower() or ".gltf" in str(input_file).lower():
-        return 8, extra_data, filename
-    
-    if input_file == armaturepath:
-        print_me(printme, "Testing armature file for metadata:")
-        skel_meshes, skel_armatures, skel_animations, extra_data = get_metadata(armaturepath, printme)
-        if (skel_meshes, skel_armatures, skel_animations) == (0, 0, 1):
-            return 4, extra_data, filename
-    
-    elif armaturepath is not None and not check_file_exists("metadata: armature path", armaturepath):
-        armaturepath = None
-        print_me(printme, f"Armature path `{filename}` is not a valid file. Ignoring.")
+def get_status(input_file, printme): # Now includes file check internally
 
-    def get_status(input_file, armaturepath):
-        ARM, MSH, ANIM = 1, 2, 4
+    if check_file_exists(f"metadata: {input_file}", input_file): # returns bool
+
+        if ".dae" in str(input_file).lower():
+            return 7, extra_data
+        if ".glb" in str(input_file).lower() or ".gltf" in str(input_file).lower():
+            return 8, extra_data
+
+        ARM, MSH, ANIM = 1, 2, 4 #### WHEN DID THIS BECOME 43??
+
         try:
+            print(f"Input file going into get metadata: {input_file}")
             meshes, armatures, animations, extra_data = get_metadata(input_file, printme)
             mesh = meshes * MSH
             armature = armatures * ARM
@@ -187,29 +189,50 @@ def metadata_func(input_file, armaturepath=None, printme=True):
             content = mesh + armature + anim
 
             print(meshes, armatures, animations, extra_data)
-            if content == 4: ## THIS PART has to happen after both have gone through the status check. 
-                if check_file_exists("metadata: armature path", armaturepath):
-                    print(f"There is an existing file for this animation: {armaturepath}")
-                    skel_meshes, skel_armatures, skel_animations, _ = get_metadata(armaturepath, printme)
-                    if not skel_armatures:
-                        return 42, extra_data
-                    if skel_armatures and not (skel_meshes or skel_animations):
-                        return 41, extra_data
-                    print_me(printme, "Armature file contains more than just armature. Tentatively returning; may fail.")
-                    return 43, extra_data
-                print(f"The armaturepath file does not exist: {armaturepath}")
-                return 42, extra_data
-
             return content, extra_data
 
         except Exception as e:
             print_me(printme, f"FAILED TO GET METADATA: {e}")
-            return 0, extra_data
+            return 0, None
+    else:
+        return 00, None
 
-    print_me(printme, f"Checking metadata for `{filename}`:")
-    status, extra_data = get_status(input_file, armaturepath)
-    print_me(printme, f"[{filename}] STATUS {status}: {status_definitions.get(status)} \n \n")
-    return status, extra_data, filename
+def contrast_files(f1_status, f2_status, printme):
+    if f1_status == 4: ## THIS PART has to happen after both have gone through the status check. 
+        if f2_status == 1:
+            return 41
+        if f2_status in [3,5,7]:
+            print_me(printme, "Armature file contains more than just armature. Tentatively returning; may fail.")
+            return 43
+        print(f"No valid armature file or valid armature data: {armaturepath}")
+        return 42
+    else:
+        return 00
+
+def check_if_anim_arma_pair(input_file, armaturepath=None, printme=True): 
+    # need to redo this. 
+    #need to get basic status of both if >1, /then/ decide armature role etc. not at the first found test subject.
+    contrast_1 = contrast_2 = "no contrast; not enough viable files."
+    f2_extra_data = f1_extra_data = {}
+    print("Top of `check if anim arma pair`")
+    print_me(printme, f"Checking metadata for `{input_file}` and `{armaturepath}`:")
+    f1_status, f1_extra_data = get_status(input_file, True)
+    print(f"Still here 1; {f1_status}")
+    f2_status, f2_extra_data = get_status(armaturepath, True)
+    print(f"Still here 2: {f2_status}")
+    if f1_status not in null_status and f2_status not in null_status:
+        contrast_1 = contrast_files(f1_status, f2_status, True)
+        print(f"Testing File 1 with F2 as armature: {contrast_1}")
+        contrast_2 = contrast_files(f2_status, f1_status, True)
+        print(f"Testing File 2 with F1 as armature: {contrast_2}")
+
+    filename = get_filename_ext(input_file)[1]
+    
+    arma_filename = get_filename_ext(armaturepath)[1]
+
+    print_me(printme, f"[{filename}] STATUS {f1_status}: {status_definitions.get(f1_status)}, Contrast1: {contrast_1} \n \n")
+    print_me(printme, f"[{arma_filename}] STATUS {f2_status}: {status_definitions.get(f2_status)}, Contrast2: {contrast_2} \n \n")
+    return f1_status, f1_extra_data, filename
 
 def mass_metadata(input_file_list):
 
@@ -219,7 +242,7 @@ def mass_metadata(input_file_list):
             _, filename, _ = get_filename_ext(file)
             metadata_dict[filename] = {"local_file": file, "status": f"6: {status_definitions.get(6)}"}
         else:
-            status, extra_data, filename = metadata_func(file, armaturepath, printme = False)
+            status, extra_data, filename = check_if_anim_arma_pair(file, armaturepath, printme = False)
             metadata_dict[filename] = {"local_file": file, "status": f"{status}: {status_definitions.get(status)}", "GR2Tag": extra_data.get("GR2Tag"), "Internal_Filename": extra_data.get("Internal_Filename")} #moved these here, move back to separate 'if extra_data' if it causes errors.
 
     if json_output:
@@ -234,7 +257,7 @@ def conform_to_armature(filepath, armaturepath):
     newfile_ext = "gr2"
     if armaturepath != None:
         try:
-            arma_status, _, _ = metadata_func(armaturepath, armaturepath, printme=True) # Should use logging levels instead of printme but it'll do for now.
+            arma_status, _, _ = check_if_anim_arma_pair(armaturepath, armaturepath, printme=True) # Should use logging levels instead of printme but it'll do for now.
             if arma_status not in has_armature:#[1, 4, 5, 6]:
                 print("Provided armature path does not contain a skeleton. Aborting conform process.")
                 return None
@@ -358,16 +381,16 @@ def attempt_conversion(filepath, armaturepath):
     anim_or_static = "static"
     has_anim = [4,41,42,43,5,7]
     
-    print("\n" *20)
+    print("\n" *6)
     print("Beginning import process...")
     print()
 
-    status, _, filename = metadata_func(filepath, armaturepath, printme = True)
+    status, _, filename = check_if_anim_arma_pair(filepath, armaturepath, printme = True)
     ext = get_filename_ext(filepath)[2]
     if status in has_anim:
         anim_or_static = "animation"
     
-    if status in [0, 00, 42] or status is None:
+    if status in [0, 00, 42, None]:
         print(f"[{status} : {status_definitions.get(status)}]. Cannot proceed with import.")
         return None, None
 
@@ -398,7 +421,7 @@ def attempt_conversion(filepath, armaturepath):
         combined_path = conform_to_armature(filepath, armaturepath)
         if check_file_exists("attemptimport: combined path", combined_path):
             print("Combined GR2 file created successfully. Updated metadata check:")
-            new_status, _, _ = metadata_func(combined_path, armaturepath, printme = True)
+            new_status, _, _ = check_if_anim_arma_pair(combined_path, armaturepath, printme = True)
             if new_status in [5, 7]:
                 print("Attempt direct conversion of armature + anim to glb.")
                 glb_path = convert_to_GLB(combined_path, get_filename_ext(combined_path)[2])
@@ -639,7 +662,9 @@ def set_up_bulk_convert(armaturepath, anim_dir, settings):
     # testing armature: F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2
     # testing dir: #  F:\test\gltf_tests\raw_intdev_anims
     print("Warning: May take a while if there are many files to convert.")
-    imported_anims = [f"Armature used: {get_filename_ext(armaturepath)[1]}"]
+    # HERE check the animation file is real first
+    if check_file_exists("testing animation file before bulk conversion", armaturepath):
+        imported_anims = [f"Armature used: {get_filename_ext(armaturepath)[1]}"]
     import os
     test_list = os.listdir(anim_dir)
     print(f"Test list: {test_list}")
@@ -653,7 +678,7 @@ def set_up_bulk_convert(armaturepath, anim_dir, settings):
             print("No animation file(s) found.")
     return imported_anims
 
-def import_process(file_to_import, armaturepath, settings):
+def import_process(file_to_import, armaturepath, settings): # going to move the 
 
     print(f"About to start conversion: file_to_import = {file_to_import}, armaturepath = {armaturepath}")
     if file_to_import is not None:
@@ -683,37 +708,30 @@ def import_process(file_to_import, armaturepath, settings):
         print("File to import is None. Exiting.")
         return "No file to import."
 
-def assign_files(file):
-
 ## I don't need this here but the syntax is useful:
 # # metadata == True if import_type == "metadata"
 # # ==     metadata = (import_type == "metadata")
 # extendable: 
 #       metadata = import_type in ("metadata", "meta", "md")
 
-    print(f"File to import: {file}")
-    if ".gr2" in str(file).lower():
-        print("Checking metadata first.")
-        status, _, _ = metadata_func(file)
-        return status
-    return 6
-
 def main(file_1, file_2, settings):
 
     f1_status = f2_status = file_to_import = armaturepath = None
-
+    print(f"Start of main: {file_1}, {file_2}")
     import_type = settings.get("import_type")
 
     if import_type == "bulk_anim":
         print("Bulk Anim Mode.")
-        if assign_files(file_1) == 1:
+        f1_status, _ = get_status(file_1, True)
+        if f1_status == 1:
             armaturepath = file_1
-        elif assign_files(file_1) in has_armature:
+        elif f1_status in has_armature:
             print("Armature file is not just armature: may fail.")
             armaturepath = file_1
         else:
             print("Armature file does not contain a viable armature. Returning.")
             return f"No viable armature in {file_1}"
+        
         anim_dir = file_2
     #    settings = {"collection_name":props.collection_name_override, "import_type":props.import_type, 
     #                "custom_bones":props.use_custom_bone_obj, "custom_bone_obj":props.custom_bone_obj, 
@@ -722,23 +740,51 @@ def main(file_1, file_2, settings):
         return file_list
 
     else:
-        f1_status = assign_files(file_1)
+        #def get_viable(file_1, file_2):
+        f1_status, _ = get_status(file_1, True) ### this is so dumb. I need to step away for a bit, I've got like 4 functions now for 'is this a skeleton' when it was already working. Need to step away, maybe try to sleep at some point, and come back.
         print(f"f1 status: {f1_status}")
-        f2_status = assign_files(file_2)
+        f2_status, _ = get_status(file_2, True)
         print(f"f2 status: {f2_status}")
-        if f1_status in has_armature and f2_status not in has_armature and f2_status not in [0, 00, None]: # has armature (Should this be checking that neither f1 or f2 are nulled?)
+        if f1_status in null_status and f2_status in null_status:
+            return "No viable files to import. Sorry."
+        #    if f1_status in null_status:
+        #        if f2_status in null_status:
+        #            return False, False
+        #        return False, True
+        #    if f2_status in null_status:
+        #        return True, False
+        #    return True, True ## I think this is right.##
+
+        #viable_1, viable_2 = get_viable(file_1, file_2)
+
+        #if viable_1 and not viable_2:
+        #    viable_1 = file_to_import,
+        #    armaturepath = None
+        #elif viable_2 and not viable_1:
+        #    viable_2 = file_to_import,
+        #    armaturepath = None
+#ARM, MSH, ANIM = 1, 2, 4
+
+### WHAT TO DO WITH 'ANIM+ARMA', // 'ARMA'? Do I overwrite the arma with the new one? Maybe that's an option. 'If separate armature is supplied, will always try to add it.
+#Really thuogh I should just go back to 'supplementary armature in the second slot. God this is not worth it.
+        if f1_status in has_armature and f2_status not in has_armature and f2_status not in null_status: # has armature (Should this be checking that neither f1 or f2 are nulled?)
             file_to_import = file_2
             armaturepath = file_1
             print("File 1 has armature, file 2 doesn't.")
-        elif f2_status in has_armature and f1_status not in has_armature and f1_status not in [0, 00, None]: # has armature
+        elif f2_status in has_armature and f1_status not in has_armature and f1_status not in null_status: # has armature
             file_to_import = file_1
             armaturepath = file_2
             print("File 2 has armature, file 1 doesn't.")
-        if file_to_import is None and armaturepath != None:
-            file_to_import = armaturepath
-            print("File 1 doesn't exist, armature does.")
-        else:
+        if f1_status in null_status:
+            print(f"File one doesn't exist: {file_1}")
+            if f2_status not in null_status:
+                print(f"But file 2 does: {file_2}")
+                file_to_import = file_2
+                #print("File 1 doesn't exist, armature does.")
+        
+        elif f1_status not in null_status:
             file_to_import = file_1
+            armaturepath = file_2 # just the default of file1,
             print("Nothing else applies, assigning file 1 as file to import.")
 
         print(f"About to enter import process. File to import: {file_to_import}. Armaturepath: {armaturepath}")
@@ -752,27 +798,31 @@ def run(mode, inputs, settings=None):
     initial_setup(mode, settings)
     armaturepath = None
     if mode == "metadata":
-        for file in inputs:
-            if metadata_func(file, file, True)[0] == 1: # run this first just to see. Later rewrite it to test 'is one of these an armature' after the initial check, right now the order's all wrong. Going with this for now because I need to test something else first.
-                armaturepath = file
         idx = 1
         for file in inputs:
+            print(f"File in inputs: {file}")
+            status, _ = get_status(file, True)
+            if status == 1:
+                armaturepath = file
+                print(f"[run, after initial setup] Armature in {file}")
             if "Secondary file (if needed)" in file:
                 metadata_collection.append("[File 2: -- No secondary file --]")
+                print("[after initial setup] No secondary file")
                 continue
             if ".gr2" not in str(file).lower() and file.strip() != "": # change this to check if it's a file at all maybe. simple regex? Maybe not worth it.
                 print(f"[WARN] Cannot get metadata for non-GR2 files ({str(file)}).")
                 metadata_collection.append(f"[File {idx}: [{get_filename_ext(file)[1]}] STATUS 6: {status_definitions.get(6)}] \n \n")
-                idx += 1
+                idx += 1 
                 continue
             if file.strip() == "":
                 print(f"No file in fileline {idx}")
                 metadata_collection.append(f"[File {idx}: STATUS 0: No Filepath] \n \n")
                 idx += 1
                 continue
-
-
-            status, _, filename = metadata_func(file, armaturepath, True) #temporarily true for troubleshooting.
+            if status in null_status:
+                print(f"File is null status: {file}, {status}")
+            print(f"About to go to metadata func from run for {file}")
+            status, _, filename = check_if_anim_arma_pair(file, armaturepath, True) #temporarily true for troubleshooting.
             metadata_collection.append(f"[File {idx}: [{filename}] STATUS {status}: {status_definitions.get(status)}] \n \n")
             idx += 1
 
@@ -781,6 +831,8 @@ def run(mode, inputs, settings=None):
         return metadata_collection
 
     if mode == "import":
-        [file_1, file_2] = inputs
+        print(f"Mode import. Inputs: {inputs}, type: {type(inputs)}")
+        file_1, file_2 = inputs # which one?
+        #[file_1, file_2] = inputs
         file_list = main(file_1, file_2, settings)
         return file_list
