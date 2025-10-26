@@ -2,6 +2,8 @@
 
 GR2 Importer for Blender 5 is a Blender add-on for importing GR2 models and animations directly into Blender 5, without relying on the (now removed) Collada support.
 
+With OpenCollada support entirely removed from recent versions of Blender, none of the existing GR2/DAE plugins/addons work anymore*. While GR2/DAE files might not be enormously widely used in 2025, I still use them, and while I still use Blender 4.3 primarily, I want it to be possible in 5.0+.
+
 It handles:
 
 Armature & animation merging: automatically combines animation-only GR2s with armature-containing GR2s.
@@ -37,6 +39,7 @@ Requires `divine.exe` and `granny2.dll` from https://github.com/Norbyte/lslib
   * Converter including the automatic combining of animation GR2s with provided armature GR2s (as animations without armatures cannot be imported to Blender)
 
  -- harpoon
- 
- [It turns out I was wrong. dos2de_collada_importer still works. I'm going to finish this anyway, because it does some things differently and I think it's worth finishing, but wanted to acknowledge this.]
- 
+
+
+[[ It turns out I was wrong. `dos2de_collada_importer` still works. I'm going to finish this anyway, because it does some things differently and I think it's worth finishing, but wanted to acknowledge this. ]]
+
