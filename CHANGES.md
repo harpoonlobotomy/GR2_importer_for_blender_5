@@ -4,13 +4,17 @@
 
 
 # CURRENT:
+	Version 0.64
+	  * Fixed bone scaling and custom bones. (Custom bones default to icospheres if not otherwise selected.)
+	  * Fixed an issue where the bone orientation fix would disappear control bones.
+          ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ 
+		  
 	Version 0.6:
 	  (* Made so many little commmits on the test branch, but then merged commits instead of squashing so I may as well have done them on the main branch from the start. Ah well.)
 	  * Added open-console bool, use existing collection, disable popups, custom bone bool + 'set from selection' to UI, all working.
 	  * Added initial setup to run from the addon (checking for required files, checking import addon is enabled etc)
 	  * Fixed the Collection naming; now defaults to the armature name unless something else is specified.
 	  * Fixed armature naming; non-animation are named for the primary import object, animation GR2s are named for the animation file.
-          ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ 
 	  
 	Version 0.55:
 	  * Improvement to bone orientation, no longer moves towards an arbitrary child. Also added the option in the UI to turn off the bone fix for the current import.
@@ -48,41 +52,32 @@
 
 # TODO:
 	As of 25/10/25:
+	  * Fix/reimplement Addon Preferences
 	  * Looked into the adding retargeting as a post-import option, but Blender 5's animation system is... well broken. so I'm leaving that off the todo list for now.
 	  * Delete imported objects of type (eg, delete all but the action data of animation imports (potentially assigning them to a specific one? Not sure.) Maybe. dos2de importer has something like this, worth looking at.
-	  * Figure out why Finger2_R is pointing in a random direction. It's strange, and every other bone is fine... 
+	  DONE Figure out why Finger2_R is pointing in a random direction. It's strange, and every other bone is fine... (Had to use an epsilion, == was too strict.)
 	  * Move control empties with bone orientation fix; currently they're left where the bone tail originally was. 
 	  * Save UI settings to prefs. 
 	  * Sample .blend with custom bones maybe.
-	  * Check for existing obj of the same name (now we're importing the animation names. Can't imagine this'll be useful though. V low priority. May delete later.
-	  * The panel options have gotten a bit busy. Need to subcategorise.
+	  DONE The panel options have gotten a bit busy. Need to subcategorise.
 	  
 	As of 22/10/25:
 	  * Prefs json is in the works, Blender addon is baseline functional.
 	As of 21/10/25:
 	  * Add a database lookup for anim/skel combinations. If not 'GR2Tag', can just use the filename or potentially internal filename. (Probably the former more than the latter.)
 	  * Set up a prefs json for current filepaths once the UI is in.
-	  DONE Add the option to batch import animations from a folder or list.
 	  * If I pull the duration/framerate from the metadata, I could set it to have the frames match the imported anim. Wouldn't need it that often but might be interesting...
 	  * Find out how "GR2Tag" applies in the LSF files, see if it can be used for assigning correct skeleton file to anim files.
 	  * Automate parentage of imported animations to mesh/obj (optional)
-	  DONE Test for 0-size generated files. Currently they're discovered with the metadata checker, but return the same failure error as viable non-GR2 inputs.
 	  * Bone orientation needs calibration; currently is better than importing without fix but is inconsistent. Need to figure out the rules internally for why/when it flips on x/y to be able to compensate.
 			- Refer to "bpy.ops.wm.collada_import(filepath=str(collada_path), fix_orientation=True)" from Blender 4.3.2 for the original orientation fixes.
 	  * Imports can be optimised, temp files need management. Currently all temp files are simply left in the temp folder. 
 			- Need options for autoremoval of temp files and/or designation of output folder.
 			- Also the option to name the temp files in accordance with the input file. Currently it just autogenerates a random filename.
 	  * Should implement support for export even if I don't need it personally.
-	  * Check if 'Game' LS file is actually needed/used at all anymore.
-	  DONE Actual addon with user preferences and UI panel. <- today's priority.
-
 
 	As of 20/10/2025:
-	  DONE Fix import of models without meshes (Tried twice to get strikethrough to work in markdown. Apparently neither worked. Oh well.)
-	  DONE Rework import script to explicitly account for object-types found by the rootreader.
-	  * Blender UI/Addon
 	  * Licence details for the portions from LSLib.
-
 
 	  // Licence notes (temp, will do it properly later)
 	    The following files in this repo were taken from [LSLib](https://github.com/Norbyte/lslib) and adjusted to fit this project. Licencing and the relevant copyright for the original content of these files remains with Norbyte.

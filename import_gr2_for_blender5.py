@@ -6,20 +6,16 @@
 # No export functionality at all yet, may implement it later but I only need import for myself so that's my focus.
 #  -- harpoon
   
-# 22/10/2025
+# 25/10/2025
 
-armaturepath = None # here to make sure there's always something. I kept commenting it out in testing.
+#import_list = [r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\Resources\Proxy_INTDEV_A.GR2", r"F:\test\gltf_tests\rpremixed anim and skel as skel to mesh.gr2", r"F:\test\gltf_tests\randompeaceintdev defaults copyskel.gr2", r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2", r"F:\test\gltf_tests\random_peace_to_intdev_then_intdev_cin_merged_with_the_combined_copy_skel.gr2", r"F:\test\gltf_tests\random_peace_to_intdev_then_intdev_cin_merged_with_the_combined.gr2", r"F:\test\gltf_tests\random_peace_with_intdev_cin.gr2", 
+#r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\OwlBear\OWLBEAR_Cub_Rig\_Construction\Owlbear_Cub_Rig_DFLT_CINE_Curious_HeadTilt_01.GR2", r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\OwlBear\OWLBEAR_Cub_Base.GR2", r"F:\test\gltf_tests\owlbear_mesh.dae", r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Rig\INTDEV_Rig_DFLT_IDLE_Random_Peace_01.GR2", r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2", r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2"]
 
-import_list = [r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\Resources\Proxy_INTDEV_A.GR2", r"F:\test\gltf_tests\rpremixed anim and skel as skel to mesh.gr2", r"F:\test\gltf_tests\randompeaceintdev defaults copyskel.gr2", r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2", r"F:\test\gltf_tests\random_peace_to_intdev_then_intdev_cin_merged_with_the_combined_copy_skel.gr2", r"F:\test\gltf_tests\random_peace_to_intdev_then_intdev_cin_merged_with_the_combined.gr2", r"F:\test\gltf_tests\random_peace_with_intdev_cin.gr2", 
-r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\OwlBear\OWLBEAR_Cub_Rig\_Construction\Owlbear_Cub_Rig_DFLT_CINE_Curious_HeadTilt_01.GR2", r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\OwlBear\OWLBEAR_Cub_Base.GR2", r"F:\test\gltf_tests\owlbear_mesh.dae", r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Rig\INTDEV_Rig_DFLT_IDLE_Random_Peace_01.GR2", r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2", r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2"]
-
-file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2"
+#file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2"
 
 #inputs = None, None#armaturepath, file_to_import
 
-version = "0.61" # just some cleanup. 
-
-# Turns out the retargeter is broken in Blender v5, so that's hurt my soul a little. 
+version = "0.64" # fixed custom bone scaling and bone orientation bug
 
 json_output = False
 jsonout_file = f"F:\\test\\gr2_metadata.json" #None
@@ -34,6 +30,11 @@ from pathlib import Path
 divineexe = r"F:\Blender\Addons etc\Packed\Tools\Divine.exe"
 divinedir = str(Path(divineexe).parent)
 rootreader = r"D:\Git_Repos\GR2_importer_for_blender_5\rootreader\bin\Debug\net8.0\rootreader.exe"
+
+global temp_files_final, temp_files # shouldn't need to be global. Fix this later.
+
+temp_files = list()
+temp_files_final = list()
 
 status_definitions = {
     00: "File does not exist",
@@ -51,8 +52,9 @@ status_definitions = {
 }
 
 has_armature = [1,3,5,7]
-null_status = [0, 00, None, ""]
+null_status = [0, 00, None]
 
+## === Helpers === ##
 def initial_setup(mode, settings):
 
     print(f"Settings: {settings}")
@@ -88,8 +90,7 @@ def initial_setup(mode, settings):
                 print(f"Failed to enable glTF native importer: {e}")
                 print("Please enable the 'glTF 2.0 Format' addon manually in Blender preferences and try again.")
                 return list(f"Failed to enable glTF Importer: {e}", "Please enable `glTF 2.0 Format` addon manually in Blender Add-ons and try again.")
-
-## === Little utilities ===
+            
 def print_me(status, *args, **kwargs):
     if status:
         print(*args, **kwargs)
@@ -118,7 +119,9 @@ def check_file_exists(origin, filepath):
         return False
     return True
 
+# MAIN FUNCTIONS #
 
+### METADATA ###
 def get_metadata(filepath, printme):
 
     extra_data = {"GR2Tag": None, "Internal_Filename": None}
@@ -126,31 +129,12 @@ def get_metadata(filepath, printme):
     result = subprocess.run(
         [rootreader, filepath],
         capture_output=True,
-        text=True, cwd=divinedir) ### `cwd`:  set to divine dir to ensure any dependent files are found.
-
-    print(f"Ran subprocess on {filepath}")
+        text=True, cwd=divinedir ### `cwd`:  set to divine dir to ensure any dependent files are found.
+    )
 
     meshes, armatures, animations = 0, 0, 0
     if result.returncode == 0:
         root_data = json.loads(result.stdout)
-
-        output_file = r"F:\\test\\import_gr2_root_data.json"
-        with open(output_file, "w+") as f:
-            json.dump(root_data, f, indent=4)
-        #with open(log_path, "w") as f:
-            #json.dump(existing_data, f, indent=2)
-            # from dos2de (norbyte's version): context.scene.ls_properties.metadata_version = collada.ColladaMetadataLoader.LSLIB_METADATA_VERSION
-            # referring to here: C:\Users\Gabriel\AppData\Roaming\Blender Foundation\Blender\5.1\extensions\user_default\io_scene_dos2de\collada.py
-            #which has all this:
-                    #self.root = et.parse(collada_path).getroot()
-                    #self.load_root_profile(context)
-                    #anim_settings = self.find_anim_settings()
-                    #self.load_mesh_profiles()
-                    #self.load_armature_profiles()
-                    #if anim_settings is not None:
-                    #    self.load_anim_profile(context, anim_settings)
-            # Wish I'd thought to just print the entire thing before I stripped it. Would have been good to have a full reference. Oh well. Will do it later today.
-
         if ("Skeletons" in root_data and root_data.get("Skeletons") is not None):
             armatures = 1
         if "Meshes" in root_data and root_data.get("Meshes") is not None:
@@ -158,83 +142,76 @@ def get_metadata(filepath, printme):
         if "Animations" in root_data and root_data.get("Animations") is not None:
             animations = 1
         if "GR2Tag" in root_data and root_data.get("GR2Tag") is not None:
-            extra_data.update({"GR2Tag": root_data['GR2Tag']})
-        if "FromFileName" in root_data and root_data.get("FromFileName") is not None:
-            extra_data.update({"Internal_Filename": root_data['FromFileName']})
-
-        print(f"In get_metadata after root_data: Filename: meshes: {meshes}, armatures: {armatures}, animations: {animations}, extra_data: {extra_data}")
+            extra_data.update({"GR2Tag": root_data.get('GR2Tag')})
+        extra_data.update({"Internal_Filename": root_data.get('FromFileName')})
         return meshes, armatures, animations, extra_data
     
     else:
         print_me(printme, f"Failed to get metadata: {result.stderr}")
         return None, None, None, None
+
+def metadata_func(input_file, armaturepath=None, printme=True): 
+    # need to redo this. 
+    #need to get basic status of both if >1, /then/ decide armature role etc. not at the first found test subject.
+
+    filename = get_filename_ext(input_file)[1]
+    extra_data = {}
+
+    import_exists = check_file_exists(f"metadata: {filename}", input_file)
+    if not import_exists:
+        print_me(printme, f"Import file `{filename}` does not exist. Aborting metadata check.")
+        return 00, None, filename
     
-def get_status(input_file, printme): # Now includes file check internally
+    if ".dae" in str(input_file).lower():
+        return 7, extra_data, filename
+    if ".glb" in str(input_file).lower() or ".gltf" in str(input_file).lower():
+        return 8, extra_data, filename
+    
+    if input_file == armaturepath:
+        print_me(printme, "Testing armature file for metadata:")
+        skel_meshes, skel_armatures, skel_animations, extra_data = get_metadata(armaturepath, printme)
+        if (skel_meshes, skel_armatures, skel_animations) == (0, 0, 1):
+            return 4, extra_data, filename
+    
+    elif armaturepath is not None and not check_file_exists("metadata: armature path", armaturepath):
+        armaturepath = None
+        print_me(printme, f"Armature path `{filename}` is not a valid file. Ignoring.")
 
-    if check_file_exists(f"metadata: {input_file}", input_file): # returns bool
-
-        if ".dae" in str(input_file).lower():
-            return 7, extra_data
-        if ".glb" in str(input_file).lower() or ".gltf" in str(input_file).lower():
-            return 8, extra_data
-
-        ARM, MSH, ANIM = 1, 2, 4 #### WHEN DID THIS BECOME 43??
-
+    def get_status(input_file, armaturepath):
+        ARM, MSH, ANIM = 1, 2, 4
         try:
-            print(f"Input file going into get metadata: {input_file}")
             meshes, armatures, animations, extra_data = get_metadata(input_file, printme)
             mesh = meshes * MSH
             armature = armatures * ARM
             anim = animations * ANIM
             content = mesh + armature + anim
 
-            print(meshes, armatures, animations, extra_data)
+            print_me(meshes, armatures, animations, extra_data)
+            if content == 4: ## THIS PART has to happen after both have gone through the status check. 
+                if check_file_exists("metadata: armature path", armaturepath):
+                    print_me(f"There is an existing file for this animation: {armaturepath}")
+                    skel_meshes, skel_armatures, skel_animations, _ = get_metadata(armaturepath, printme)
+                    if not skel_armatures:
+                        return 42, extra_data
+                    if skel_armatures and not (skel_meshes or skel_animations):
+                        return 41, extra_data
+                    print_me(printme, "Armature file contains more than just armature. Tentatively returning; may fail.")
+                    return 43, extra_data
+                print_me(f"The armaturepath file does not exist: {armaturepath}")
+                return 42, extra_data
+
             return content, extra_data
 
         except Exception as e:
             print_me(printme, f"FAILED TO GET METADATA: {e}")
-            return 0, None
-    else:
-        return 00, None
+            return 0, extra_data
 
-def contrast_files(f1_status, f2_status, printme):
-    if f1_status == 4: ## THIS PART has to happen after both have gone through the status check. 
-        if f2_status == 1:
-            return 41
-        if f2_status in [3,5,7]:
-            print_me(printme, "Armature file contains more than just armature. Tentatively returning; may fail.")
-            return 43
-        print(f"No valid armature file or valid armature data: {armaturepath}")
-        return 42
-    else:
-        return 00
+    print_me(printme, f"Checking metadata for `{filename}`:")
+    status, extra_data = get_status(input_file, armaturepath)
+    print_me(printme, f"[{filename}] STATUS {status}: {status_definitions.get(status)} \n \n")
+    return status, extra_data, filename
 
-def check_if_anim_arma_pair(input_file, armaturepath=None, printme=True): 
-    # need to redo this. 
-    #need to get basic status of both if >1, /then/ decide armature role etc. not at the first found test subject.
-    contrast_1 = contrast_2 = "no contrast; not enough viable files."
-    f2_extra_data = f1_extra_data = {}
-    print("Top of `check if anim arma pair`")
-    print_me(printme, f"Checking metadata for `{input_file}` and `{armaturepath}`:")
-    f1_status, f1_extra_data = get_status(input_file, True)
-    print(f"Still here 1; {f1_status}")
-    f2_status, f2_extra_data = get_status(armaturepath, True)
-    print(f"Still here 2: {f2_status}")
-    if f1_status not in null_status and f2_status not in null_status:
-        contrast_1 = contrast_files(f1_status, f2_status, True)
-        print(f"Testing File 1 with F2 as armature: {contrast_1}")
-        contrast_2 = contrast_files(f2_status, f1_status, True)
-        print(f"Testing File 2 with F1 as armature: {contrast_2}")
-
-    filename = get_filename_ext(input_file)[1]
-    
-    arma_filename = get_filename_ext(armaturepath)[1]
-
-    print_me(printme, f"[{filename}] STATUS {f1_status}: {status_definitions.get(f1_status)}, Contrast1: {contrast_1} \n \n")
-    print_me(printme, f"[{arma_filename}] STATUS {f2_status}: {status_definitions.get(f2_status)}, Contrast2: {contrast_2} \n \n")
-    return f1_status, f1_extra_data, filename
-
-def mass_metadata(input_file_list):
+def mass_metadata(input_file_list): # doesn't work with the addon 
 
     metadata_dict = {}
     for file in input_file_list:
@@ -242,22 +219,22 @@ def mass_metadata(input_file_list):
             _, filename, _ = get_filename_ext(file)
             metadata_dict[filename] = {"local_file": file, "status": f"6: {status_definitions.get(6)}"}
         else:
-            status, extra_data, filename = check_if_anim_arma_pair(file, armaturepath, printme = False)
+            status, extra_data, filename = metadata_func(file, None, printme = False)
             metadata_dict[filename] = {"local_file": file, "status": f"{status}: {status_definitions.get(status)}", "GR2Tag": extra_data.get("GR2Tag"), "Internal_Filename": extra_data.get("Internal_Filename")} #moved these here, move back to separate 'if extra_data' if it causes errors.
 
     if json_output:
         import json
         with open(jsonout_file, "w+") as f:
-            json.dump(metadata_dict, f, indent=2)
-        
-#### IMPORT HELPERS ####
+            json.dump(metadata_dict, f, indent=2)     
+
+### FILE CONVERSION ###
 def conform_to_armature(filepath, armaturepath):
 
     has_armature = [1, 3, 5, 7]
     newfile_ext = "gr2"
     if armaturepath != None:
         try:
-            arma_status, _, _ = check_if_anim_arma_pair(armaturepath, armaturepath, printme=True) # Should use logging levels instead of printme but it'll do for now.
+            arma_status, _, _ = metadata_func(armaturepath, armaturepath, printme=True) # Should use logging levels instead of printme but it'll do for now.
             if arma_status not in has_armature:#[1, 4, 5, 6]:
                 print("Provided armature path does not contain a skeleton. Aborting conform process.")
                 return None
@@ -297,6 +274,9 @@ def convert_to_GLB(temppath, fromtype):
     #print()
     try:
         subprocess.run(f'"{divineexe}" --loglevel warn -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o glb -a convert-model -e flip-uvs')
+        if check_file_exists(f"Conversion from {fromtype} to glb", temppath2):
+            temp_files_final.append(temppath2)
+            print(f"Conversion from {fromtype} to .glb was successful.")
         return temppath2
     except Exception as e:
         print(f"Failed to generate glb from {fromtype} with Divine. Returning early. Reason: {e}")
@@ -306,11 +286,14 @@ def GR2_to_DAE_to_GLB(filepath, ext):
     dae_path = convert_to_DAE(filepath, ext)
     if dae_path is not None and check_file_exists("dae conversion", dae_path):
         glb_path = convert_to_GLB(dae_path, "dae")
+        temp_files.append(dae_path)
         if glb_path is not None and check_file_exists("glb conversion from dae", glb_path):
+            temp_files_final.append(glb_path)
             return glb_path
         print("glb conversion from DAE failed. Aborting import.")
         return None
 
+###  IMPORT ###
 def import_glb(filename, directory, existing_objects):
 
     filename = filename + ".glb" if not filename.lower().endswith((".glb", ".gltf")) else filename
@@ -381,16 +364,16 @@ def attempt_conversion(filepath, armaturepath):
     anim_or_static = "static"
     has_anim = [4,41,42,43,5,7]
     
-    print("\n" *6)
+    print("\n" *8)
     print("Beginning import process...")
     print()
 
-    status, _, filename = check_if_anim_arma_pair(filepath, armaturepath, printme = True)
+    status, _, filename = metadata_func(filepath, armaturepath, False)
     ext = get_filename_ext(filepath)[2]
     if status in has_anim:
         anim_or_static = "animation"
     
-    if status in [0, 00, 42, None]:
+    if status in [0, 00, 42] or status is None:
         print(f"[{status} : {status_definitions.get(status)}]. Cannot proceed with import.")
         return None, None
 
@@ -420,12 +403,15 @@ def attempt_conversion(filepath, armaturepath):
             print("Armature contains more than just a skeleton. May fail.")
         combined_path = conform_to_armature(filepath, armaturepath)
         if check_file_exists("attemptimport: combined path", combined_path):
+            temp_files.append(combined_path)
             print("Combined GR2 file created successfully. Updated metadata check:")
-            new_status, _, _ = check_if_anim_arma_pair(combined_path, armaturepath, printme = True)
+            new_status, _, _ = metadata_func(combined_path, armaturepath, False)
             if new_status in [5, 7]:
                 print("Attempt direct conversion of armature + anim to glb.")
                 glb_path = convert_to_GLB(combined_path, get_filename_ext(combined_path)[2])
-                return glb_path, "animation"
+                if glb_path:
+                    temp_files_final.append(glb_path)
+                    return glb_path, "animation"
             print("Merging of animation + armature did not result in a file with both animation and armature. Will fail.")
             return glb_path, anim_or_static
         return None, anim_or_static
@@ -447,7 +433,9 @@ def attempt_conversion(filepath, armaturepath):
                 except Exception as e:
                     print(f"conversion from gr2 to dae to glb failed: {e}")
                     return None, anim_or_static
-                return glb_path, anim_or_static
+                if glb_path:
+                    return glb_path, anim_or_static
+                return None, anim_or_static
         else:
             # Assume it's GLTF or GLB at this point. Or unnamed type. Might as well try it. 
             print(f"{filename} is GLB/GLTF. Attempt import directly.")
@@ -455,7 +443,8 @@ def attempt_conversion(filepath, armaturepath):
     
     else:
         print(f"Anything left at the end of this function: {status}, {filename}")
-        
+
+### POST-IMPORT ###
 def cleanup(new_objects, status, anim_filename, settings):
     
     # Delete LOD objects ending with _LOD\d+
@@ -488,49 +477,47 @@ def cleanup(new_objects, status, anim_filename, settings):
     oldicos = set()
     for obj in non_lod:
         if obj.type == "ARMATURE":
-            armature_list.append(obj) # changed back # changed to obj.name from obj.
+            bone_names = []
+            armature_list.append(obj)
+            if settings.get("show_axes"):
+                #bpy.data.armatures[obj.name].show_axes = True
+                
+                bpy.context.object.data.show_axes = True # just because it's useful. Should make it an option. But maybe too many options. Need to organise the options...
+
             if settings.get("custom_bones"):
                 new_custom_name = settings.get("custom_bone_obj")
-                all_obj = set(bpy.context.scene.objects)
-                for test in all_obj: ### this is a terrible way to do this.
-                    if test.name == new_custom_name:
-                        primary = test
-                    #this is going to be a next iter, isn't it. It always is.
-                for bone in obj.pose.bones:
-                    if bone.custom_shape:
-                        scale_custom_bone = settings.get("scale_custom_bone")
-                        if scale_custom_bone:
-                            bone.use_custom_shape_bone_size = True
+                scale_custom_bone = settings.get("scale_custom_bone")
+                if new_custom_name and new_custom_name.lower() != "ico":
+                    if bpy.data.objects.get(new_custom_name):
+                        primary=bpy.data.objects.get(new_custom_name)
 
-                        old_ico = bone.custom_shape
-                        bone.custom_shape = primary
-                        if old_ico != primary:
-                            oldicos.add(old_ico)
-                    else:
-                        bone.custom_shape = primary
+                for bone in obj.pose.bones:
+                    if scale_custom_bone:
+                        bone.use_custom_shape_bone_size = True
+                    old_ico = bone.custom_shape
+                    bone.custom_shape = primary
+                    if old_ico != primary:
+                        if old_ico not in excess_icospheres:
+                            excess_icospheres.add(old_ico) #changed to just use excess icospheres rather than oldicos set.
+
             else:
                 for bone in obj.pose.bones:
+                    bone_names.append(bone.name)
                     if bone.custom_shape:
-                        bone.custom_shape = None # likely won't work. Oh, it does.
-                ## NOTE: This does not remove the original created ico or its collection. Those area remnant of the native importer.
-                # might delete them later, if they're not used by anything after this point?
-                # will look into it. See if they're data linked to anything, if not maybe delete, and then if collection empty, remove it too.
-            def fix_bone_orientation():
+                        bone.custom_shape = None
 
-                ## NOTE: There are certain dummy bones that don't flip orientation (eg Dummy_R_Foot_01/L, Dummy_R_KneeFX_02/L, Dummy_L_Foot_02/R.) Might be able to use that as a stable reference if it holds across armatures.
-                # Also: DummyLFoot02 and DummyLFoot01 both start from the same relative position, but DummyLFoot02 is twice as long, with its tail far above  the joint. DummyLFoot01 meets the joint neatly.
-                # Not sure why and don't know what it means.
+            def fix_bone_orientation():
+                #track_bones = ["ToesNail1_L", "Toes_L_endBone", "ToesNail1_R", "Toes_R_endBone"]
+                track_bones = []#"Finger2_R", "Finger_R_Endbone"]
 
                 donotmove_bones = ["Root_M", ] # just a hardcoded list of bones that should not reorient.
 
-                # will save an armature from the 4.3.2 native importer and compare like bones. See where it's still not quite right.
-
                 context = bpy.context.object.data.edit_bones
                 bpy.ops.object.mode_set(mode='EDIT') # just for set to edit mode, whether it already was or not doesn't seem to error it.
-                bpy.context.object.data.show_axes = True # just because it's useful.
 
                 for bone in context:
-                    #print(f"Bone: {bone}, head: {bone.head}, tail: {bone.tail}")
+                    if bone.name in track_bones:
+                        print(f"Bone: {bone.name}, head: {bone.head}, tail: {bone.tail}")
                     children = []
                     if not bone_dict.get(bone.name):
                         bone_dict[bone.name] = {}
@@ -544,15 +531,20 @@ def cleanup(new_objects, status, anim_filename, settings):
                         entry.update({
                             "children": children})
 
+                EPSILON = 1e-6 # change this if needed but seems to work okay. No idea why only Finger2_R was affected, but this fixes it.
                 parents = set()
                 children = set()
                 for bone in context:
                     entry = bone_dict.get(bone.name)
                     entry.update({"head_pos": bone.head, "tail_pos": bone.tail.copy(), "new_tail_pos": bone.tail, "roll": bone.roll})
-
+                    if bone.name in track_bones:
+                        print(f"\n \n Bone: {bone.name}")
+                        print("Before anything moves.")
+                        for key, value in entry.items():
+                            print(key, value)
                     parent = entry.get("parent")
                     if not parent:
-                        #print(f"No parent for {bone.name}.")
+                        print(f"No parent for {bone.name}.")
                         pass
                     elif parent in donotmove_bones: # think this should work?
                         continue
@@ -561,73 +553,144 @@ def cleanup(new_objects, status, anim_filename, settings):
                         print(f"Number of siblings: {len(siblings)}")
 
                         if len(siblings) > 1:
-                            print("Too many kids.")
+                            print(f"{bone.name} has too many siblings:")
                             for sib in siblings:
                                 print(sib)
                             continue
 
                         child = bone.name # could skip this and just keep typing bone.name but I need the clarity for now.
-                        #print(f"parent: {parent}, child: {child}")
+                        if child in track_bones or parent in track_bones in track_bones:
+                            print(f"parent: {parent}, child: {child}")
                         children.add(child)
                         parents.add(parent)
                         parent_obj = context.get(parent) ## can just use the dict for this now, no?
                         childhead = entry.get("head_pos")
                         #p2 = parent_obj.head ## i have these here to check for relative length, so if a child is too far away, it doesn't stretch the parent bone. Currently not implemented though.
-                        parent_obj.tail = childhead
+                        
+                        if (childhead - parent_obj.head).length <= EPSILON:
+                            print(f"Cannot move parent tail for {bone.name}; child's head is at parent's head position")
+                        else:
+                            parent_obj.tail = childhead
+                        if bone.name in track_bones:
+                            print(f"\n \n Bone: {bone.name}")
+                            print("After initial movements:")
+                            for key, value in entry.items():
+                                print(key, value)
 
-                #print(bone_dict)
+                before_fixing = []
+                for bone in context:
+                    before_fixing.append(bone.name)
+                print(f"After intial movements, before fixing: {before_fixing}")
+                print(f"# of bones currently: {len(before_fixing)}")
+
+                from mathutils import Quaternion, Vector
                 counter = 0
                 no_movement = []
+                bone_angle_dict = {}
                 for name, entry in bone_dict.items():
+                    #print(f"Name: {name}")
+                    new_tail_pos = entry.get("new_tail_pos")
+                    orig_tail_pos = entry.get("tail_pos")
+                    head_pos = entry.get("head_pos")
+                    #print(f"head pos: {head_pos}, new tail pos: {new_tail_pos}, orig tail pos: {orig_tail_pos}")
                     counter += 1
+                    #if Vector(new_tail_pos) - Vector(orig_tail_pos) <= EPSILON or Vector(orig_tail_pos)-Vector(new_tail_pos) <= EPSILON:
                     if entry.get("new_tail_pos") == entry.get("tail_pos"):
                         no_movement.append(name)
-                
-                if counter != len(no_movement): ## this whole part is silly. 
-                    print(f"Total of {counter} bones, {len(no_movement)} did not move. `({no_movement})`")   
-                    for bone in no_movement:
-                        if bone in donotmove_bones:
-                            continue
-                        parent = bone_dict[bone].get("parent")
-                        if not parent:
-                            continue
-                        parenthead = bone_dict[parent].get("head_pos")
-                        parenttail = bone_dict[parent].get("tail_pos")
-                        parentnewtail = bone_dict[parent].get("new_tail_pos")
+                        print(f"{name} added to no_movement.")
+            
+                print(f"Total of {counter} bones, {len(no_movement)} did not move. `({no_movement})`")   
+                for bone in no_movement:
+
+                    if bone in donotmove_bones:
+                        continue
+                    parent = bone_dict[bone].get("parent")
+                    if not parent:
+                        continue
+                    parenthead = bone_dict[parent].get("head_pos")
+                    parenttail = bone_dict[parent].get("tail_pos")
+                    parentnewtail = bone_dict[parent].get("new_tail_pos")
+                    vec_before = parenttail - parenthead
+                    vec_after = parentnewtail - parenthead
+
+                    if bone in track_bones or parent in track_bones:
+                        print(f"Before grandparents: bone: {bone}, tail, head: {parenttail}, {parenthead}, newtail, head: {parentnewtail}, {parenthead}, vecbefore: {vec_before}, vecafter: {vec_after}")
+
+                    if vec_after.length <= EPSILON:
+                        grandparent = bone_dict[parent].get("parent")
+                        parenthead = bone_dict[grandparent].get("head_pos")
+                        parenttail = bone_dict[grandparent].get("tail_pos")
+                        parentnewtail = bone_dict[grandparent].get("new_tail_pos")
+                        
                         vec_before = parenttail - parenthead
-                        vec_after  = parentnewtail  - parenthead
-                        #print(f"bone: {bone}, tail, head: {parenttail}, {parenthead}, newtail, head: {parentnewtail}, {parenthead}, vecbefore: {vec_before}, vecafter: {vec_after}")
-                        
-                        if vec_after.length == 0:
-                            grandparent = bone_dict[parent].get("parent")
-                            parenthead = bone_dict[grandparent].get("head_pos")
-                            parenttail = bone_dict[grandparent].get("tail_pos")
-                            parentnewtail = bone_dict[grandparent].get("new_tail_pos")
-                            
-                            vec_before = parenttail - parenthead
-                            vec_after  = parentnewtail  - parenthead                        
-                        
-                        angle = vec_before.angle(vec_after)
-                        axis = vec_before.cross(vec_after)
-                        axis.normalize()
-                        #print(f"Angle change: {angle}")
-                        #print(f"axis: {axis}")
-                        
-                        childhead = bone_dict[bone].get("head_pos")
-                        childtail = bone_dict[bone].get("tail_pos")
-                        vec_target = childtail - childhead
-                        
-                        from mathutils import Quaternion
-                        rot_quat = Quaternion(axis, angle)
-                        vec_rotated = rot_quat @ vec_target
-                        
-                        childtail_new = childhead + vec_rotated
-                        boneobj = context.get(bone)
-                        boneobj.tail = childtail_new
-                        
-                else:
-                    print("No bones moved.")
+                        vec_after = parentnewtail - parenthead
+                        if bone in track_bones or parent in track_bones:
+                            print("Bone: ", bone)
+                            print("Parent: ", bone_dict[bone].get("parent"))
+                            print("Grandparent: ", bone_dict[parent].get("parent"))
+                            print(f"After grandparents: bone: {bone}, tail, head: {parenttail}, {parenthead}, newtail, head: {parentnewtail}, {parenthead}, vecbefore: {vec_before}, vecafter: {vec_after}")
+    
+                    angle = vec_before.angle(vec_after)
+                    axis = vec_before.cross(vec_after)
+                    axis.normalize()
                     
+                    bone_angle_dict[bone] = {
+                        "bone": bone,
+                        "Angle change": angle,
+                        "axis": axis,
+                        "dot": vec_before.dot(vec_after)
+                    }
+                    bone_dict[bone].update({"angle":angle, "axis": axis})
+#
+                    #if angle > 2:
+                    #    continue # Fixed by the epison above. Keeping it here for one commit in case I need it later for some reason.
+                    #    if "_L" in bone or "_R" in bone:
+                    #        print("Bone has an angle over 2:")
+                    #        print(f"Angle: {angle}, axis: {axis}")
+                    #        m = re.search(r"^(\w+)_([LR])(?:_(.+))?$", bone)
+                    #        if m := re.search(r"^(\w+)_([LR])(?:_(.+))?$", bone):
+                    #            base, side, suffix = m.groups()
+                    #            is_left = side == "L"
+                    #            is_right = side == "R"
+                    #            print(f"Name: {base}, side: {side}")
+                    #            if is_left: #(meaning the current bone has 'R')
+                    #                mirrored_bone = base + "_R"
+                    #            else:
+                    #                mirrored_bone = base + "_L"
+                    #            if suffix:
+                    #                mirrored_bone = mirrored_bone + suffix
+                    #            mirrorbone = bone_dict.get(mirrored_bone)
+                    #            #context.get(mirrorbone)
+                    #            mirror_angle = mirrorbone.get("angle")
+                    #            mirror_axis = mirrorbone.get("axis")
+                    #            print(f"Mirror angle: {mirror_angle}, mirror_axis: {mirror_axis}")
+#
+                    #        print(f"Mirrored bone: {mirrored_bone}")
+
+                    childhead = bone_dict[bone].get("head_pos") # maybe just use the child obj ('bone' here) directly instead of  the dict. Shouldn't make a difference but idk.
+                    childtail = bone_dict[bone].get("tail_pos")
+                    vec_target = childtail - childhead
+                    
+                    rot_quat = Quaternion(axis, angle)
+                    vec_rotated = rot_quat @ vec_target
+                    
+                    childtail_new = childhead + vec_rotated
+                    print(f"Bone name: {bone}, childtail_new: {childtail_new}")
+                    if childtail_new <= EPSILON:
+                        continue
+                    boneobj = context.get(bone)
+                    boneobj.tail = childtail_new
+
+                    if bone in track_bones:
+                        print(f"\n \n Bone: {bone}")
+                        print("After all movements.")
+                        entry = bone_dict[bone]
+                        for key, value in entry.items():
+                            print(key, value)
+
+                for k, v in bone_angle_dict.items():
+                    print(k, v)
+
                 for name, entry in bone_dict.items():
                     roll = entry.get("roll")
                     #print(f"entry: {name}, {entry}, roll: ", roll)
@@ -636,6 +699,11 @@ def cleanup(new_objects, status, anim_filename, settings):
                         bone = context.get(name)
                         if bone:
                             bone.roll = roll
+
+                for name in bone_dict.keys():
+                    bone = context.get(name)
+                    if not bone:
+                        print(f"Bone {name} is missing now. Was there at the start.")
 
             #print(f"Object name: {obj.name}")
             obj.name = anim_filename[1].split(".")[0]
@@ -646,8 +714,20 @@ def cleanup(new_objects, status, anim_filename, settings):
                 if settings.get("fix_bones"):
                     fix_bone_orientation()
             #fix_bone_orientation()
-
-    for ico in oldicos:
+            #print(f"Original bone list: {bone_names}") # just for debugging, delete later.
+            #ending_with_bones = []
+            #for bone in obj.pose.bones:
+            #    ending_with_bones.append(bone.name)
+            #print(f"Ending with bones: {ending_with_bones}")
+            #lost_bones = []
+            #for bone in bone_names:
+            #    if bone not in ending_with_bones:
+            #        lost_bones.append(bone)
+            #print(f"Lost bones: {lost_bones}")
+            
+    #for ico in oldicos:
+    #    bpy.data.objects.remove(ico,do_unlink=True)
+    for ico in excess_icospheres:
         bpy.data.objects.remove(ico,do_unlink=True)
 
     bpy.ops.object.mode_set(mode='OBJECT')
@@ -655,16 +735,20 @@ def cleanup(new_objects, status, anim_filename, settings):
     for item in armature_list:
         print(f"Imported:  {item.name}")
 
+    delete_all_temp = True
+    if delete_all_temp:
+        for item in (temp_files, temp_files_final):
+            "delete item from disk." # obvs not implemented yet.
+
     return armature_list
 
+### SET-UP ###
 def set_up_bulk_convert(armaturepath, anim_dir, settings):
 
     # testing armature: F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2
     # testing dir: #  F:\test\gltf_tests\raw_intdev_anims
     print("Warning: May take a while if there are many files to convert.")
-    # HERE check the animation file is real first
-    if check_file_exists("testing animation file before bulk conversion", armaturepath):
-        imported_anims = [f"Armature used: {get_filename_ext(armaturepath)[1]}"]
+    imported_anims = [f"Armature used: {get_filename_ext(armaturepath)[1]}"]
     import os
     test_list = os.listdir(anim_dir)
     print(f"Test list: {test_list}")
@@ -678,7 +762,7 @@ def set_up_bulk_convert(armaturepath, anim_dir, settings):
             print("No animation file(s) found.")
     return imported_anims
 
-def import_process(file_to_import, armaturepath, settings): # going to move the 
+def import_process(file_to_import, armaturepath, settings):
 
     print(f"About to start conversion: file_to_import = {file_to_import}, armaturepath = {armaturepath}")
     if file_to_import is not None:
@@ -708,30 +792,37 @@ def import_process(file_to_import, armaturepath, settings): # going to move the
         print("File to import is None. Exiting.")
         return "No file to import."
 
+def assign_files(file):
+
 ## I don't need this here but the syntax is useful:
 # # metadata == True if import_type == "metadata"
 # # ==     metadata = (import_type == "metadata")
 # extendable: 
 #       metadata = import_type in ("metadata", "meta", "md")
 
+    print(f"File to import: {file}")
+    if ".gr2" in str(file).lower():
+        print("Checking metadata first.")
+        status, _, _ = metadata_func(file)
+        return status
+    return 6
+
 def main(file_1, file_2, settings):
 
     f1_status = f2_status = file_to_import = armaturepath = None
-    print(f"Start of main: {file_1}, {file_2}")
+
     import_type = settings.get("import_type")
 
     if import_type == "bulk_anim":
         print("Bulk Anim Mode.")
-        f1_status, _ = get_status(file_1, True)
-        if f1_status == 1:
+        if assign_files(file_1) == 1:
             armaturepath = file_1
-        elif f1_status in has_armature:
+        elif assign_files(file_1) in has_armature:
             print("Armature file is not just armature: may fail.")
             armaturepath = file_1
         else:
             print("Armature file does not contain a viable armature. Returning.")
             return f"No viable armature in {file_1}"
-        
         anim_dir = file_2
     #    settings = {"collection_name":props.collection_name_override, "import_type":props.import_type, 
     #                "custom_bones":props.use_custom_bone_obj, "custom_bone_obj":props.custom_bone_obj, 
@@ -740,33 +831,10 @@ def main(file_1, file_2, settings):
         return file_list
 
     else:
-        #def get_viable(file_1, file_2):
-        f1_status, _ = get_status(file_1, True) ### this is so dumb. I need to step away for a bit, I've got like 4 functions now for 'is this a skeleton' when it was already working. Need to step away, maybe try to sleep at some point, and come back.
+        f1_status = assign_files(file_1)
         print(f"f1 status: {f1_status}")
-        f2_status, _ = get_status(file_2, True)
+        f2_status = assign_files(file_2)
         print(f"f2 status: {f2_status}")
-        if f1_status in null_status and f2_status in null_status:
-            return "No viable files to import. Sorry."
-        #    if f1_status in null_status:
-        #        if f2_status in null_status:
-        #            return False, False
-        #        return False, True
-        #    if f2_status in null_status:
-        #        return True, False
-        #    return True, True ## I think this is right.##
-
-        #viable_1, viable_2 = get_viable(file_1, file_2)
-
-        #if viable_1 and not viable_2:
-        #    viable_1 = file_to_import,
-        #    armaturepath = None
-        #elif viable_2 and not viable_1:
-        #    viable_2 = file_to_import,
-        #    armaturepath = None
-#ARM, MSH, ANIM = 1, 2, 4
-
-### WHAT TO DO WITH 'ANIM+ARMA', // 'ARMA'? Do I overwrite the arma with the new one? Maybe that's an option. 'If separate armature is supplied, will always try to add it.
-#Really thuogh I should just go back to 'supplementary armature in the second slot. God this is not worth it.
         if f1_status in has_armature and f2_status not in has_armature and f2_status not in null_status: # has armature (Should this be checking that neither f1 or f2 are nulled?)
             file_to_import = file_2
             armaturepath = file_1
@@ -775,16 +843,11 @@ def main(file_1, file_2, settings):
             file_to_import = file_1
             armaturepath = file_2
             print("File 2 has armature, file 1 doesn't.")
-        if f1_status in null_status:
-            print(f"File one doesn't exist: {file_1}")
-            if f2_status not in null_status:
-                print(f"But file 2 does: {file_2}")
-                file_to_import = file_2
-                #print("File 1 doesn't exist, armature does.")
-        
-        elif f1_status not in null_status:
+        if file_to_import is None and armaturepath != None:
+            file_to_import = armaturepath
+            print("File 1 doesn't exist, armature does.")
+        else:
             file_to_import = file_1
-            armaturepath = file_2 # just the default of file1,
             print("Nothing else applies, assigning file 1 as file to import.")
 
         print(f"About to enter import process. File to import: {file_to_import}. Armaturepath: {armaturepath}")
@@ -798,31 +861,26 @@ def run(mode, inputs, settings=None):
     initial_setup(mode, settings)
     armaturepath = None
     if mode == "metadata":
+        for file in inputs:
+            if metadata_func(file, file, True)[0] == 1: # run this first just to see. Later rewrite it to test 'is one of these an armature' after the initial check, right now the order's all wrong. Going with this for now because I need to test something else first.
+                armaturepath = file
         idx = 1
         for file in inputs:
-            print(f"File in inputs: {file}")
-            status, _ = get_status(file, True)
-            if status == 1:
-                armaturepath = file
-                print(f"[run, after initial setup] Armature in {file}")
             if "Secondary file (if needed)" in file:
                 metadata_collection.append("[File 2: -- No secondary file --]")
-                print("[after initial setup] No secondary file")
                 continue
-            if ".gr2" not in str(file).lower() and file.strip() != "": # change this to check if it's a file at all maybe. simple regex? Maybe not worth it.
+            if ".gr2" not in str(file).lower() and file.strip() != "":
                 print(f"[WARN] Cannot get metadata for non-GR2 files ({str(file)}).")
                 metadata_collection.append(f"[File {idx}: [{get_filename_ext(file)[1]}] STATUS 6: {status_definitions.get(6)}] \n \n")
-                idx += 1 
+                idx += 1
                 continue
             if file.strip() == "":
                 print(f"No file in fileline {idx}")
                 metadata_collection.append(f"[File {idx}: STATUS 0: No Filepath] \n \n")
                 idx += 1
                 continue
-            if status in null_status:
-                print(f"File is null status: {file}, {status}")
-            print(f"About to go to metadata func from run for {file}")
-            status, _, filename = check_if_anim_arma_pair(file, armaturepath, True) #temporarily true for troubleshooting.
+
+            status, _, filename = metadata_func(file, armaturepath, True) #temporarily true for troubleshooting.
             metadata_collection.append(f"[File {idx}: [{filename}] STATUS {status}: {status_definitions.get(status)}] \n \n")
             idx += 1
 
@@ -831,8 +889,9 @@ def run(mode, inputs, settings=None):
         return metadata_collection
 
     if mode == "import":
-        print(f"Mode import. Inputs: {inputs}, type: {type(inputs)}")
-        file_1, file_2 = inputs # which one?
-        #[file_1, file_2] = inputs
+        [file_1, file_2] = inputs
         file_list = main(file_1, file_2, settings)
+        print(f"Temp files: {temp_files}")
+        print(f"Temp files final: {temp_files_final}")
         return file_list
+    

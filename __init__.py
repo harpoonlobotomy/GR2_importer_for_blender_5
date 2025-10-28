@@ -86,7 +86,7 @@ def set_selected_as_custom(self, context):
                 objects_queue.append(selection.name)
     else:
         print("No objects selected.")
-        #show_popup("No objects selected,")
+        show_popup("No objects selected,")
         return "No objects selected.", 0
 
     if len(objects_queue) == 1:
@@ -95,7 +95,7 @@ def set_selected_as_custom(self, context):
         
     if len(objects_queue) > 1:
         print(f"{len(objects_queue)} meshes selected; please select only one object to set as custom bone.")
-        #show_popup(f"{len(objects_queue)} objects selected; please select only one object to set as custom bone.", title="")
+        show_popup(f"{len(objects_queue)} objects selected; please select only one object to set as custom bone.", title="")
         return f"{len(objects_queue)} objects selected; please select just one mesh.", 0
     
     return "No suitable objects", 0 # just in case anything slips through. Shouldn't be necessary.
@@ -125,7 +125,7 @@ class GR2_ImporterProps(PropertyGroup):
         default=r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2",
         description="Primary import file", subtype='FILE_PATH')
     
-    file_2: StringProperty(     # add a third later maybe ### Would love the option of selecting multiple, instead of just single or dir.
+    file_2: StringProperty(
         name="", default="Secondary file (if needed)",
         description="Secondary import file", subtype="FILE_PATH")
     
@@ -140,27 +140,31 @@ class GR2_ImporterProps(PropertyGroup):
         default=r"F:\test\gltf_tests\raw_intdev_anims",
         description="Directory of armature files", subtype="DIR_PATH")
     
-    show_advanced_options: BoolProperty(
-        name="Show Advanced Options", description="Show or hide advanced options", default=False)
-    
-    test_files: BoolProperty(name="test_file_components", default=False)
+    show_additional_options: BoolProperty(
+        name="Show Additional Options", description="Show or hide additional options", default=False)
+
     collection_name_override: StringProperty(name="Collection Name (optional)", default="", description="Collection Name (optional); if not used, the primary input filename will be used for the collection name.")
     reuse_existing_collection: BoolProperty(name="Reuse Coll.", default=True, description="Reuse an existing collection with the correct name if found.")
-    custom_bone_obj: StringProperty(name="Custom Bone Object", default="Ico", description="Select an object to use as a custom bone.")
-    use_custom_bone_obj: BoolProperty(name="Use custom bones", default=True)
-    scale_custom_bone: BoolProperty(name="Scale custom bones", default=False)
     temp_folder: StringProperty(name="Temp folder", default="") # should be in prefs, not here.
     delete_temp: BoolProperty(name="Delete temp files", default=True, description="Delete temporary files")
-    fix_bones: BoolProperty(name="Fix Bone Orientation", default=True, description="Try to reorient bones into proper alignment.")
     open_console: BoolProperty(name="Open console on run", default=True, description="Open Terminal before running import.")
-    set_selected_as_custom: StringProperty(name="Set selected object as custom bone", default="", description="Set the selected object as 'custom bone' for the next import . [Can be changed afterwards in Pose Mode: Bone Properties > Viewport Display, Custom Shape > Custom Object]")
     no_popups: BoolProperty(name="no_popups", default=False, description="No popup messages. (Messages will still be printed to terminal.)")
+    
+    show_armature_options: BoolProperty(
+        name="Show Armature Options", description="Show or hide armature options", default=False)
+    test_files: BoolProperty(name="test_file_components", default=False)
+    custom_bone_obj: StringProperty(name="Custom Bone Object", default="Ico", description="Select an object to use as a custom bone.")
+    use_custom_bone_obj: BoolProperty(name="Use custom bones", default=True)
+    set_selected_as_custom: StringProperty(name="Set selected object as custom bone", default="", description="Set the selected object as 'custom bone' for the next import . [Can be changed afterwards in Pose Mode: Bone Properties > Viewport Display, Custom Shape > Custom Object]")
+    scale_custom_bone: BoolProperty(name="Scale custom bones", default=False)
+    fix_bones: BoolProperty(name="Fix Bone Orientation", default=True, description="Try to reorient bones into proper alignment.")
+    show_axes: BoolProperty(name="Show bone axes", default=True, description="Show axes on bones")
 
     # === PANELS ===
 def draw_GR2import_panel(self, context):
     layout = self.layout
-    scn = context.scene
-    props = scn.gr2_importer_props
+    scene = context.scene
+    props = scene.gr2_importer_props
 
     # === IMPORT TYPE ===
     box = layout.box()
@@ -198,9 +202,28 @@ def draw_GR2import_panel(self, context):
     layout.operator("gr2.run_importer", text="Run Importer")
 
     optionsbox = layout.box()
-    optionsbox.prop(props, "show_advanced_options", icon="TRIA_DOWN" if props.show_advanced_options else "TRIA_RIGHT", icon_only=False, emboss=True)
-    if props.show_advanced_options:
-        col2 = optionsbox.column(align=True)
+    optionsbox.prop(props, "show_armature_options", icon="TRIA_DOWN" if props.show_armature_options else "TRIA_RIGHT", icon_only=False, emboss=True)
+    optionsbox_2 = layout.box()
+    optionsbox_2.prop(props, "show_additional_options", icon="TRIA_DOWN" if props.show_additional_options else "TRIA_RIGHT", icon_only=False, emboss=True)
+   
+    # I need to sort the options. This is getting far too messy.
+    # GENERAL SETUP (collection, console, popups)
+    # ARMATURE SETUP (fix bones, custom bones) # done, in testing.
+   
+    if props.show_armature_options:
+        col3 = optionsbox.column(align=True)
+        row4 = col3.row()
+        row4.prop(props, "use_custom_bone_obj")
+        row4.prop(props, "scale_custom_bone")
+        if props.use_custom_bone_obj:
+            row5 = col3.row()
+            row5.prop(props, "custom_bone_obj")
+            row5.operator("gr2.set_custom_bone", text="Set selection as custom bone")
+        col3.prop(props, "fix_bones")
+        col3.prop(props, "show_axes")
+
+    if props.show_additional_options:
+        col2 = optionsbox_2.column(align=True)
         row1 = col2.row()
         row1.prop(props, "collection_name_override")
         row1.prop(props, "reuse_existing_collection")
@@ -208,14 +231,6 @@ def draw_GR2import_panel(self, context):
         row3.prop(props, "remove_temp")
         row3.prop(props, "keep_final")
         col2.prop(props, "temp_folder")
-        row4 = col2.row()
-        row4.prop(props, "use_custom_bone_obj")
-        row4.prop(props, "scale_custom_bone")
-        if props.use_custom_bone_obj:
-            row5 = col2.row()
-            row5.prop(props, "custom_bone_obj")
-            row5.operator("gr2.set_custom_bone", text="Set selection as custom bone")
-        col2.prop(props, "fix_bones")
         row5 = col2.row()
         row5.prop(props, "open_console")
         row5.prop(props, "no_popups")
@@ -265,8 +280,8 @@ class GR2_OT_Importer_Run_Import(Operator):
             inputs = [props.file_1, props.file_2]
         
         settings = {"collection_name":props.collection_name_override, "import_type":props.import_type, 
-                    "custom_bones":props.use_custom_bone_obj, "custom_bone_obj":props.custom_bone_obj, 
-                    "remove_all_temp":props.remove_temp, "keep_final":props.keep_final, "fix_bones":props.fix_bones,
+                    "custom_bones":props.use_custom_bone_obj, "custom_bone_obj":props.custom_bone_obj, "scale_custom_bone":props.scale_custom_bone,
+                    "remove_all_temp":props.remove_temp, "keep_final":props.keep_final, "fix_bones":props.fix_bones, "show_axes":props.show_axes,
                     "open_console":props.open_console, "reuse_existing_collection":props.reuse_existing_collection}
         
         from . import (import_gr2_for_blender5)
@@ -306,7 +321,6 @@ class GR2_OT_Test_Files(Operator):
 
     def invoke(self, context, event):
         return self.execute(context)
-
 
 class GR2_OT_set_custom_bone(Operator):
     

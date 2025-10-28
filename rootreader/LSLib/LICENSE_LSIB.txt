@@ -1,4 +1,21 @@
 ** FOR FILES/CONTENT FROM https://github.com/Norbyte/lslib/: **
+[[
+The following files are modified versions of the originals from LSLib by Norbyte, under the MIT License:
+	Format.cs
+	Helpers.cs
+	Reader.cs
+	Writer.cs
+	Root.cs
+	Vertex.cs
+	ColladaSchema.cs
+	Common.cs
+	Game.cs
+	granny2wrapper.cpp
+	granny2wrapper.h
+	Granny2Compressor.cs
+	GR2Utils.cs
+]]
+
 
 The MIT License (MIT)
 
