@@ -1,23 +1,28 @@
 # 2025 HarpoonLobotomy
 
+from tokenize import String
 import bpy
 from bpy.props import StringProperty, BoolProperty, EnumProperty, IntProperty
 from bpy.types import Panel, Operator, OperatorFileListElement, AddonPreferences, PropertyGroup
 from datetime import datetime
 
-version = 0.32
-#22/10/25.
+version = 0.7 #sudden version jump to match the import_gr2. Not sure how I feel about it. Was 0.32 before this. Makes sense though.
+#29/10/25.
 # Initial functions in progress.
 # - harpoon
+
+# ... Given that they need to have divine.exe to do the actual conversion, what's the point of including rootreader? 
+# Oh right. To get printable output. Should be an easier way but I didn't find it yet. Need to see how ConverterApp does it.
 
 bl_info = {
     "name": "GR2 Importer",
     "author": "harpoonLobotomy",
     "description": "Import GR2/DAE models and animations into Blender without Collada (Blender 5.0 compatible)",
     "blender": (5, 0, 0), #will make it backwards compatible once it's fully working in 5, will just need to adapt the api.
-    "version": (0, 3, 2),
+    "version": (0, 7, 0),
     "category": "Import-Export",
     "location": "Property Panel, Press N in Viewport",
+    "support": "COMMUNITY",
 }
 
 DEBUG_GROUPS = {
@@ -170,7 +175,7 @@ def draw_GR2import_panel(self, context):
         def_col.prop(props, "file_2")
         def_col.separator()
         def_col.separator()
-        def_col.operator("gr2.test_files", text="Test file(s) for components")
+        def_col.operator("gr2.test_files", text="Check components from file metadata")
         def_col.separator()
 
     if props.import_type == "bulk_anim":
@@ -259,15 +264,19 @@ class GR2_OT_Importer_Run_Import(Operator):
             inputs = [props.armature_file_for_bulk, props.anim_dir]
         else:
             inputs = [props.file_1, props.file_2]
-        
+
+        prefs = context.preferences.addons[__name__].preferences
+
         settings = {"collection_name":props.collection_name_override, "import_type":props.import_type, 
                     "custom_bones":props.use_custom_bone_obj, "custom_bone_obj":props.custom_bone_obj, 
                     "scale_custom_bone":props.scale_custom_bone, "fix_bones":props.fix_bones, "show_axes":props.show_axes,
-                    "open_console":props.open_console, "reuse_existing_collection":props.reuse_existing_collection}
+                    "open_console":props.open_console, "reuse_existing_collection":props.reuse_existing_collection, 
+                    "divine_path":prefs.divine_path, "rootreader_path":prefs.rootreader_path}
         
         from . import (import_gr2_for_blender5)
         imported_files = import_gr2_for_blender5.run("import", inputs, settings)
 
+        print(f"Imported files: {imported_files}")
         show_popup(imported_files, title="Imported:")
         return {'FINISHED'}
 
@@ -276,8 +285,7 @@ class GR2_OT_Importer_Run_Import(Operator):
 
 
 class GR2_OT_Test_Files(Operator):
-    # run the rootreader for any filepaths in file1/file2, no imports.
-    
+
     bl_idname = "gr2.test_files"
     bl_label = "Test File(s) for Components"
     bl_description = "Run the metadata checker on the specified file(s)."
@@ -289,10 +297,13 @@ class GR2_OT_Test_Files(Operator):
         file_2 = props.file_2
 
         inputs = [file_1, file_2]
-        settings = {"open_console":props.open_console}
 
+        prefs = context.preferences.addons[__name__].preferences
+
+        settings = {"open_console":props.open_console, "divine_path":prefs.divine_path, "rootreader_path":prefs.rootreader_path}
         from . import (import_gr2_for_blender5)
         metadata_collection = import_gr2_for_blender5.run("metadata", inputs, settings)
+        print(f"Imported files: {metadata_collection}")
         if metadata_collection == None:
             metadata_collection.append("No viable files")    
         metadata_collection.append("  -------- DONE --------    ")
@@ -322,6 +333,55 @@ class GR2_OT_set_custom_bone(Operator):
     def invoke(self, context, event):
         return self.execute(context)
 
+# === PREFERENCES ===
+
+class GR2_Importer_addonPreferences(AddonPreferences):
+    bl_idname = __name__
+
+    # Code below copied from https://b3d.interplanety.org/en/add-on-preferences-panel/
+    remove_temp: BoolProperty(
+        name="Remove temp files",
+        description="Remove all temp files generated in the process.",
+        default=False,
+        update=remove_temp_cb,
+    )
+    keep_final: BoolProperty(
+        name="Keep final file only",
+        description="Keep the final .glb file, remove any other generated temp files.",
+        default=False,
+        update=keep_final_cb,
+    )
+    temp_dir: StringProperty(
+        name="Temp directory", default="", description="Where to place temp files during conversion/import. (Uses system default if none specified)", subtype="FILE_PATH"
+    )
+    divine_path: StringProperty(
+        name="Divine filepath", default=r"F:\Blender\Addons etc\Packed\Tools\Divine.exe", description="File location for divine.exe; available from [[ https://github.com/Norbyte/lslib ]]", subtype="FILE_PATH"
+    ) ## TODO remove these from the end result, just quicker for testing.
+    rootreader_path: StringProperty(
+        name="Rootreader filepath", default=r"D:\Git_Repos\GR2_importer_for_blender_5\rootreader\bin\Debug\net8.0\rootreader.exe", description="File location for rootreader.exe (included with this addon)", subtype="FILE_PATH"
+    )
+    granny_dll: StringProperty(name="granny2.dll filepath", default="", description="A copy of granny2.dll must be in the same directory as Rootreader.exe")
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column()
+        col.prop(self, "divine_path", text="Filepath to `divine.exe`")
+        col.prop(self, "rootreader_path", text="Filepath to `rootreader.exe`")
+        col.label(text="A copy of granny2.dll must be in the same directory as divine.exe")
+        row = col.row()
+        row.label(text="granny2.dll is available in old LSLib versions, such as v1.15.13")
+        row.operator("wm.url_open", text="LSLib on Github (unaffiliated)").url = "https://github.com/Norbyte/lslib"
+        layout2 = self.layout
+        layout2.separator()
+        layout2.label(text='Temp files:')
+        col2 = layout2.column()
+        row2 = col2.row()
+        row2.prop(self, "remove_temp", text="Remove all temporary files", expand=True)
+        row2.prop(self, "keep_final", text="Remove all except the final .glb temp files", expand=True)
+        col2.prop(self, "temp_dir", text="Change temp folder (system default if blank)")
+        col2.separator()
+        col2.operator("wm.url_open", text="GR2 Importer Github", emboss=True).url = "https://github.com/harpoonlobotomy/GR2_importer_for_blender_5"
+
 # === REGISTRATION ===
 classes = (
     GR2_ImporterProps,
@@ -329,7 +389,8 @@ classes = (
     GR2_OT_Test_Files,
     GR2_PT_Importer_ShaderPanel,
     GR2_PT_Importer_3DViewPanel,
-    GR2_OT_set_custom_bone
+    GR2_OT_set_custom_bone,
+    GR2_Importer_addonPreferences
 )
 
 def register():

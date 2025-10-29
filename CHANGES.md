@@ -2,10 +2,14 @@
 
 
 # CURRENT:
+	Version 0.7
+	  * Added the 'Add-on preferences' panel, moved divine.exe etc to there instead of being hardcoded.
+	  * Fixed the bulk import collections to work properly when 'reuse collection' is off; a singular new collection is used for all of the current import anims.
+          ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ 	  
+	  
 	Version 0.66
 	  * Removed temp file mentions from import script
 	  * Fixed the bulk import creating one collection per anim if the intended collection was hidden; now it creates one new collection (suffixed) and uses that for all.
-          ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ 
 	  
 	Version 0.65
 	  * Fixed bone scaling and custom bones. (Custom bones default to icospheres if not otherwise selected.)
