@@ -225,7 +225,7 @@ def mass_metadata(input_file_list): # doesn't work with the addon
     if json_output:
         import json
         with open(jsonout_file, "w+") as f:
-            json.dump(metadata_dict, f, indent=2)     
+            json.dump(metadata_dict, f, indent=2)
 
 ### FILE CONVERSION ###
 def conform_to_armature(filepath, armaturepath):
@@ -299,75 +299,9 @@ def GR2_to_DAE_to_GLB(filepath, ext):
         print("glb conversion from DAE failed. Aborting import.")
         return None
 
-###  IMPORT ###
-def import_glb(filename, directory, existing_objects):
-
-    filename = filename + ".glb" if not filename.lower().endswith((".glb", ".gltf")) else filename
-    #print("filepath, directory in import_glb: ", filename, directory)
-    try:
-        bpy.ops.import_scene.gltf(filepath=filename, directory=directory, files=[{"name":filename}], loglevel=20)
-    except Exception as e:
-        print(f"glb import failed: {e}")
-        return None
-
-    new_objects = [obj for obj in bpy.context.scene.objects if obj not in existing_objects]
-    if new_objects == None:
-        print("glb import failed, no new objects imported to scene.")
-        return None
-    return new_objects
-
-def setup_for_import(filepath, settings, armaturepath):
-    
-    _, filename, _ = get_filename_ext(filepath)
-    collection = None
-
-    specified_collection = settings.get("collection_name")
-    reuse_existing_collection = settings.get("reuse_existing_collection")
-    
-    if specified_collection and specified_collection != "":
-        trimmed_name = specified_collection
-    else:
-        import_type = settings.get("import_type")
-        if import_type == "bulk_anim":
-            armature_name = get_filename_ext(armaturepath)[1]
-            trimmed_name = armature_name.split(".")[0]
-            specified_collection = True # keeps them all in one collection
-        else:
-            trimmed_name = filename.split(".")[0]
-
-    if specified_collection or reuse_existing_collection: ## Add the option to import to selected/active collection, and/or named collection in the UI once it exists.
-        test = bpy.data.collections.get(trimmed_name)
-        if test:
-            print(f"Existing collection found with this name: {trimmed_name}.")
-            collection = test
-
-    #print(f"Collection: {collection}")
-    if not collection or (collection and not reuse_existing_collection):
-        collection = bpy.data.collections.new(trimmed_name)
-        #print(f"Collection: {collection}")
-
-    try:
-        bpy.context.scene.collection.children.link(collection)  ## NOTE: Will fail if the collection is excluded from the view layer. Even if it passed test.
-    except:
-        vl_collections = bpy.context.view_layer.layer_collection.children ### Okay. This needs a cleanup but works, at least in this specific case. If the named one is not excluded, it uses that. If it is excluded (should also check for visibility potentially, too), it makes a new collection and uses that.
-        for coll in vl_collections:
-            if coll.name == collection.name:
-                #print("Confirmed: collection exists in view layer.")
-                if coll.exclude == True:
-                    #print("Collection excluded. Creating new collection.")
-                    collection = bpy.data.collections.new(trimmed_name)
-                    bpy.context.scene.collection.children.link(collection)
-        pass
-
-    layer_collection = bpy.context.view_layer.layer_collection.children[collection.name] ## this will fail if the collection isn't linked to the view layer.
-    bpy.context.view_layer.active_layer_collection = layer_collection
-    existing_objects = set(bpy.context.scene.objects)
-
-    return existing_objects
-
-
 def attempt_conversion(filepath, armaturepath):
 # I want to add a json output for conversion. The start files/types, successes and failures. Should make it far clearer to find the patterns of what succeeds/fails if I don't have to remember across runs.
+# Really want to figure out why that one Owlbear fails, etc.
     anim_or_static = "static"
     has_anim = [4,41,42,43,5,7]
     
@@ -450,6 +384,72 @@ def attempt_conversion(filepath, armaturepath):
     
     else:
         print(f"Anything left at the end of this function: {status}, {filename}")
+
+###  IMPORT ###
+def import_glb(filename, directory, existing_objects):
+
+    filename = filename + ".glb" if not filename.lower().endswith((".glb", ".gltf")) else filename
+    #print("filepath, directory in import_glb: ", filename, directory)
+    try:
+        bpy.ops.import_scene.gltf(filepath=filename, directory=directory, files=[{"name":filename}], loglevel=20)
+    except Exception as e:
+        print(f"glb import failed: {e}")
+        return None
+
+    new_objects = [obj for obj in bpy.context.scene.objects if obj not in existing_objects]
+    if new_objects == None:
+        print("glb import failed, no new objects imported to scene.")
+        return None
+    return new_objects
+
+def setup_for_import(filepath, settings, armaturepath):
+    
+    _, filename, _ = get_filename_ext(filepath)
+    collection = None
+
+    specified_collection = settings.get("collection_name")
+    reuse_existing_collection = settings.get("reuse_existing_collection")
+    
+    if specified_collection and specified_collection != "":
+        trimmed_name = specified_collection
+    else:
+        import_type = settings.get("import_type")
+        if import_type == "bulk_anim":
+            armature_name = get_filename_ext(armaturepath)[1]
+            trimmed_name = armature_name.split(".")[0]
+            specified_collection = True # keeps them all in one collection
+        else:
+            trimmed_name = filename.split(".")[0]
+
+    if specified_collection or reuse_existing_collection: ## Add the option to import to selected/active collection, and/or named collection in the UI once it exists.
+        test = bpy.data.collections.get(trimmed_name)
+        if test:
+            print(f"Existing collection found with this name: {trimmed_name}.")
+            collection = test
+
+    #print(f"Collection: {collection}")
+    if not collection or (collection and not reuse_existing_collection):
+        collection = bpy.data.collections.new(trimmed_name)
+        #print(f"Collection: {collection}")
+
+    try:
+        bpy.context.scene.collection.children.link(collection)  ## NOTE: Will fail if the collection is excluded from the view layer. Even if it passed test.
+    except:
+        vl_collections = bpy.context.view_layer.layer_collection.children ### Okay. This needs a cleanup but works, at least in this specific case. If the named one is not excluded, it uses that. If it is excluded (should also check for visibility potentially, too), it makes a new collection and uses that.
+        for coll in vl_collections:
+            if coll.name == collection.name:
+                #print("Confirmed: collection exists in view layer.")
+                if coll.exclude == True:
+                    #print("Collection excluded. Creating new collection.")
+                    collection = bpy.data.collections.new(trimmed_name)
+                    bpy.context.scene.collection.children.link(collection)
+        pass
+
+    layer_collection = bpy.context.view_layer.layer_collection.children[collection.name] ## this will fail if the collection isn't linked to the view layer.
+    bpy.context.view_layer.active_layer_collection = layer_collection
+    existing_objects = set(bpy.context.scene.objects)
+
+    return existing_objects
 
 ### POST-IMPORT ###
 def cleanup(new_objects, status, anim_filename, settings):
