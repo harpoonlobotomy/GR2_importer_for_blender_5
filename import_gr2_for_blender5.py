@@ -15,7 +15,7 @@
 
 #inputs = None, None#armaturepath, file_to_import
 
-version = "0.64" # fixed custom bone scaling and bone orientation bug
+version = "0.65" # fixed custom bone scaling and bone orientation bug
 
 json_output = False
 jsonout_file = f"F:\\test\\gr2_metadata.json" #None
@@ -272,8 +272,14 @@ def convert_to_GLB(temppath, fromtype):
     #print(f"Divine CLI command for {fromtype.upper()} to GLB conversion:")
     #print(f'"{divineexe}" --loglevel all -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o glb -a convert-model -e flip-uvs')
     #print()
-    try:
-        subprocess.run(f'"{divineexe}" --loglevel warn -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o glb -a convert-model -e flip-uvs')
+    #            { "y-up-skeletons", true },
+    #        { "force-legacy-version", false },
+    #        { "compact-tris", true },
+    #        { "build-dummy-skeleton", true },
+    #        { "apply-basis-transforms", true },
+    #        { "mirror-skeletons", false },
+    try: ### mirror skeletons helps, at least the leg bones face the way they did in the collada importer.
+        subprocess.run(f'"{divineexe}" --loglevel warn -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o glb -a convert-model -e flip-uvs mirror-skeletons=true y-up-skeleton=false')
         if check_file_exists(f"Conversion from {fromtype} to glb", temppath2):
             temp_files_final.append(temppath2)
             print(f"Conversion from {fromtype} to .glb was successful.")
@@ -358,6 +364,7 @@ def setup_for_import(filepath, settings, armaturepath):
     existing_objects = set(bpy.context.scene.objects)
 
     return existing_objects
+
 
 def attempt_conversion(filepath, armaturepath):
 # I want to add a json output for conversion. The start files/types, successes and failures. Should make it far clearer to find the patterns of what succeeds/fails if I don't have to remember across runs.
@@ -447,7 +454,7 @@ def attempt_conversion(filepath, armaturepath):
 ### POST-IMPORT ###
 def cleanup(new_objects, status, anim_filename, settings):
     
-    # Delete LOD objects ending with _LOD\d+
+    # Delete LOD objects ending with _LOD\d+ ## potentially could change the step before this to exclude LODs (within Divine) but leaving it like this for now.
     lod_pattern = re.compile(r'.*_LOD\d+')
 
     non_lod = []
@@ -480,8 +487,6 @@ def cleanup(new_objects, status, anim_filename, settings):
             bone_names = []
             armature_list.append(obj)
             if settings.get("show_axes"):
-                #bpy.data.armatures[obj.name].show_axes = True
-                
                 bpy.context.object.data.show_axes = True # just because it's useful. Should make it an option. But maybe too many options. Need to organise the options...
 
             if settings.get("custom_bones"):
@@ -507,13 +512,12 @@ def cleanup(new_objects, status, anim_filename, settings):
                         bone.custom_shape = None
 
             def fix_bone_orientation():
-                #track_bones = ["ToesNail1_L", "Toes_L_endBone", "ToesNail1_R", "Toes_R_endBone"]
                 track_bones = []#"Finger2_R", "Finger_R_Endbone"]
 
-                donotmove_bones = ["Root_M", ] # just a hardcoded list of bones that should not reorient.
+                donotmove_bones = ["Root_M"]
 
                 context = bpy.context.object.data.edit_bones
-                bpy.ops.object.mode_set(mode='EDIT') # just for set to edit mode, whether it already was or not doesn't seem to error it.
+                bpy.ops.object.mode_set(mode='EDIT')
 
                 for bone in context:
                     if bone.name in track_bones:
@@ -531,7 +535,7 @@ def cleanup(new_objects, status, anim_filename, settings):
                         entry.update({
                             "children": children})
 
-                EPSILON = 1e-6 # change this if needed but seems to work okay. No idea why only Finger2_R was affected, but this fixes it.
+                EPSILON = 1e-6 # change this if needed but seems to work okay.
                 parents = set()
                 children = set()
                 for bone in context:
@@ -546,16 +550,11 @@ def cleanup(new_objects, status, anim_filename, settings):
                     if not parent:
                         print(f"No parent for {bone.name}.")
                         pass
-                    elif parent in donotmove_bones: # think this should work?
+                    elif parent in donotmove_bones:
                         continue
                     else:
                         siblings = bone_dict.get(parent).get("children")
-                        print(f"Number of siblings: {len(siblings)}")
-
                         if len(siblings) > 1:
-                            print(f"{bone.name} has too many siblings:")
-                            for sib in siblings:
-                                print(sib)
                             continue
 
                         child = bone.name # could skip this and just keep typing bone.name but I need the clarity for now.
@@ -563,7 +562,7 @@ def cleanup(new_objects, status, anim_filename, settings):
                             print(f"parent: {parent}, child: {child}")
                         children.add(child)
                         parents.add(parent)
-                        parent_obj = context.get(parent) ## can just use the dict for this now, no?
+                        parent_obj = context.get(parent)
                         childhead = entry.get("head_pos")
                         #p2 = parent_obj.head ## i have these here to check for relative length, so if a child is too far away, it doesn't stretch the parent bone. Currently not implemented though.
                         
@@ -572,40 +571,23 @@ def cleanup(new_objects, status, anim_filename, settings):
                         else:
                             parent_obj.tail = childhead
                         if bone.name in track_bones:
-                            print(f"\n \n Bone: {bone.name}")
-                            print("After initial movements:")
+                            print(f"\n \n Bone: {bone.name}. \n After initial movements:")
                             for key, value in entry.items():
                                 print(key, value)
-
-                before_fixing = []
-                for bone in context:
-                    before_fixing.append(bone.name)
-                print(f"After intial movements, before fixing: {before_fixing}")
-                print(f"# of bones currently: {len(before_fixing)}")
 
                 from mathutils import Quaternion, Vector
                 counter = 0
                 no_movement = []
                 bone_angle_dict = {}
                 for name, entry in bone_dict.items():
-                    #print(f"Name: {name}")
-                    new_tail_pos = entry.get("new_tail_pos")
-                    orig_tail_pos = entry.get("tail_pos")
-                    head_pos = entry.get("head_pos")
-                    #print(f"head pos: {head_pos}, new tail pos: {new_tail_pos}, orig tail pos: {orig_tail_pos}")
                     counter += 1
-                    #if Vector(new_tail_pos) - Vector(orig_tail_pos) <= EPSILON or Vector(orig_tail_pos)-Vector(new_tail_pos) <= EPSILON:
                     if entry.get("new_tail_pos") == entry.get("tail_pos"):
                         no_movement.append(name)
-                        print(f"{name} added to no_movement.")
             
-                print(f"Total of {counter} bones, {len(no_movement)} did not move. `({no_movement})`")   
+                print(f"Total of {counter} bones.")#, {len(no_movement)} did not move. `({no_movement})`")   
                 for bone in no_movement:
-
-                    if bone in donotmove_bones:
-                        continue
                     parent = bone_dict[bone].get("parent")
-                    if not parent:
+                    if bone in donotmove_bones or not parent: #better?
                         continue
                     parenthead = bone_dict[parent].get("head_pos")
                     parenttail = bone_dict[parent].get("tail_pos")
@@ -625,15 +607,14 @@ def cleanup(new_objects, status, anim_filename, settings):
                         vec_before = parenttail - parenthead
                         vec_after = parentnewtail - parenthead
                         if bone in track_bones or parent in track_bones:
-                            print("Bone: ", bone)
-                            print("Parent: ", bone_dict[bone].get("parent"))
+                            print("Bone: ", bone, "Parent: ", bone_dict[bone].get("parent"))
                             print("Grandparent: ", bone_dict[parent].get("parent"))
                             print(f"After grandparents: bone: {bone}, tail, head: {parenttail}, {parenthead}, newtail, head: {parentnewtail}, {parenthead}, vecbefore: {vec_before}, vecafter: {vec_after}")
     
                     angle = vec_before.angle(vec_after)
                     axis = vec_before.cross(vec_after)
                     axis.normalize()
-                    
+ 
                     bone_angle_dict[bone] = {
                         "bone": bone,
                         "Angle change": angle,
@@ -641,92 +622,31 @@ def cleanup(new_objects, status, anim_filename, settings):
                         "dot": vec_before.dot(vec_after)
                     }
                     bone_dict[bone].update({"angle":angle, "axis": axis})
-#
-                    #if angle > 2:
-                    #    continue # Fixed by the epison above. Keeping it here for one commit in case I need it later for some reason.
-                    #    if "_L" in bone or "_R" in bone:
-                    #        print("Bone has an angle over 2:")
-                    #        print(f"Angle: {angle}, axis: {axis}")
-                    #        m = re.search(r"^(\w+)_([LR])(?:_(.+))?$", bone)
-                    #        if m := re.search(r"^(\w+)_([LR])(?:_(.+))?$", bone):
-                    #            base, side, suffix = m.groups()
-                    #            is_left = side == "L"
-                    #            is_right = side == "R"
-                    #            print(f"Name: {base}, side: {side}")
-                    #            if is_left: #(meaning the current bone has 'R')
-                    #                mirrored_bone = base + "_R"
-                    #            else:
-                    #                mirrored_bone = base + "_L"
-                    #            if suffix:
-                    #                mirrored_bone = mirrored_bone + suffix
-                    #            mirrorbone = bone_dict.get(mirrored_bone)
-                    #            #context.get(mirrorbone)
-                    #            mirror_angle = mirrorbone.get("angle")
-                    #            mirror_axis = mirrorbone.get("axis")
-                    #            print(f"Mirror angle: {mirror_angle}, mirror_axis: {mirror_axis}")
-#
-                    #        print(f"Mirrored bone: {mirrored_bone}")
 
-                    childhead = bone_dict[bone].get("head_pos") # maybe just use the child obj ('bone' here) directly instead of  the dict. Shouldn't make a difference but idk.
+                    childhead = bone_dict[bone].get("head_pos")
                     childtail = bone_dict[bone].get("tail_pos")
                     vec_target = childtail - childhead
-                    
                     rot_quat = Quaternion(axis, angle)
                     vec_rotated = rot_quat @ vec_target
                     
                     childtail_new = childhead + vec_rotated
-                    print(f"Bone name: {bone}, childtail_new: {childtail_new}")
                     if childtail_new <= EPSILON:
                         continue
                     boneobj = context.get(bone)
                     boneobj.tail = childtail_new
 
                     if bone in track_bones:
-                        print(f"\n \n Bone: {bone}")
-                        print("After all movements.")
+                        print(f"\n \n Bone: {bone} \n After all movements.")
                         entry = bone_dict[bone]
                         for key, value in entry.items():
                             print(key, value)
 
-                for k, v in bone_angle_dict.items():
-                    print(k, v)
-
-                for name, entry in bone_dict.items():
-                    roll = entry.get("roll")
-                    #print(f"entry: {name}, {entry}, roll: ", roll)
-                    if float(roll) < 0:
-                        roll = float(roll) * -1
-                        bone = context.get(name)
-                        if bone:
-                            bone.roll = roll
-
-                for name in bone_dict.keys():
-                    bone = context.get(name)
-                    if not bone:
-                        print(f"Bone {name} is missing now. Was there at the start.")
-
-            #print(f"Object name: {obj.name}")
             obj.name = anim_filename[1].split(".")[0]
-            #print(f"Anim filename: {anim_filename}")
-            #print(f"New object name: {obj.name}")
 
-            if status != "animation": # for now, just don't apply the fix to animation. I did used to have to retarget because I couldn't fix it automatically. Maybe still true.
+            if status != "animation": # I want to implement retargeting directly if I can, but the retargeter I'm used to doesn't work on 5.0 yet and animation seems to be hit-and-miss in the current release version. So for now we just don't apply the fix to anims.
                 if settings.get("fix_bones"):
                     fix_bone_orientation()
-            #fix_bone_orientation()
-            #print(f"Original bone list: {bone_names}") # just for debugging, delete later.
-            #ending_with_bones = []
-            #for bone in obj.pose.bones:
-            #    ending_with_bones.append(bone.name)
-            #print(f"Ending with bones: {ending_with_bones}")
-            #lost_bones = []
-            #for bone in bone_names:
-            #    if bone not in ending_with_bones:
-            #        lost_bones.append(bone)
-            #print(f"Lost bones: {lost_bones}")
-            
-    #for ico in oldicos:
-    #    bpy.data.objects.remove(ico,do_unlink=True)
+
     for ico in excess_icospheres:
         bpy.data.objects.remove(ico,do_unlink=True)
 
@@ -734,11 +654,6 @@ def cleanup(new_objects, status, anim_filename, settings):
 
     for item in armature_list:
         print(f"Imported:  {item.name}")
-
-    delete_all_temp = True
-    if delete_all_temp:
-        for item in (temp_files, temp_files_final):
-            "delete item from disk." # obvs not implemented yet.
 
     return armature_list
 

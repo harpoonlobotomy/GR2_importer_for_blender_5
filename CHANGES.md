@@ -1,12 +1,12 @@
 ## CHANGELOG
 
-[I haven't been very good at this kind of documentation. Working on it.]
-
 
 # CURRENT:
-	Version 0.64
+	Version 0.65
 	  * Fixed bone scaling and custom bones. (Custom bones default to icospheres if not otherwise selected.)
 	  * Fixed an issue where the bone orientation fix would disappear control bones.
+	  * Updated the UI panel to make it a bit more organised.
+	  * Removed temp file options, will look to reimplement later.	
           ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ 
 		  
 	Version 0.6:

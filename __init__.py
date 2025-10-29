@@ -103,16 +103,6 @@ def set_selected_as_custom(self, context):
 # === PROPERTY GROUP ===
 class GR2_ImporterProps(PropertyGroup):
 
-    remove_temp: bpy.props.BoolProperty(
-        name="Remove temp files",
-        description="Remove all temp files generated in the process.",
-        default=False, update=remove_temp_cb)
-
-    keep_final: bpy.props.BoolProperty(
-        name="Keep final file only",
-        description="Keep the final .glb file, remove any other generated temp files.",
-        default=False, update=keep_final_cb)
-    
     import_type: EnumProperty(
         name="Import Type",
         items=(
@@ -126,18 +116,15 @@ class GR2_ImporterProps(PropertyGroup):
         description="Primary import file", subtype='FILE_PATH')
     
     file_2: StringProperty(
-        name="", default="Secondary file (if needed)",
-        description="Secondary import file", subtype="FILE_PATH")
+        name="", default="Secondary file (if needed)", description="Secondary import file", subtype="FILE_PATH")
     
     armature_file_for_bulk: StringProperty(
         name="", 
         default=r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2",
-        description="Armature file to conform animation files to",
-        subtype="FILE_PATH")
+        description="Armature file to conform animation files to", subtype="FILE_PATH")
     
     anim_dir: StringProperty(
-        name="",
-        default=r"F:\test\gltf_tests\raw_intdev_anims",
+        name="", default=r"F:\test\gltf_tests\raw_intdev_anims",
         description="Directory of armature files", subtype="DIR_PATH")
     
     show_additional_options: BoolProperty(
@@ -145,8 +132,6 @@ class GR2_ImporterProps(PropertyGroup):
 
     collection_name_override: StringProperty(name="Collection Name (optional)", default="", description="Collection Name (optional); if not used, the primary input filename will be used for the collection name.")
     reuse_existing_collection: BoolProperty(name="Reuse Coll.", default=True, description="Reuse an existing collection with the correct name if found.")
-    temp_folder: StringProperty(name="Temp folder", default="") # should be in prefs, not here.
-    delete_temp: BoolProperty(name="Delete temp files", default=True, description="Delete temporary files")
     open_console: BoolProperty(name="Open console on run", default=True, description="Open Terminal before running import.")
     no_popups: BoolProperty(name="no_popups", default=False, description="No popup messages. (Messages will still be printed to terminal.)")
     
@@ -211,30 +196,26 @@ def draw_GR2import_panel(self, context):
     # ARMATURE SETUP (fix bones, custom bones) # done, in testing.
    
     if props.show_armature_options:
-        col3 = optionsbox.column(align=True)
-        row4 = col3.row()
-        row4.prop(props, "use_custom_bone_obj")
-        row4.prop(props, "scale_custom_bone")
+        col_1 = optionsbox.column(align=True)
+        row_1 = col_1.row()
+        row_1.prop(props, "use_custom_bone_obj")
+        row_1.prop(props, "scale_custom_bone")
         if props.use_custom_bone_obj:
-            row5 = col3.row()
-            row5.prop(props, "custom_bone_obj")
-            row5.operator("gr2.set_custom_bone", text="Set selection as custom bone")
-        col3.prop(props, "fix_bones")
-        col3.prop(props, "show_axes")
+            row_2 = col_1.row()
+            row_2.prop(props, "custom_bone_obj")
+            row_2.operator("gr2.set_custom_bone", text="Set selection as custom bone")
+        col_1.prop(props, "fix_bones")
+        col_1.prop(props, "show_axes")
 
     if props.show_additional_options:
-        col2 = optionsbox_2.column(align=True)
-        row1 = col2.row()
-        row1.prop(props, "collection_name_override")
-        row1.prop(props, "reuse_existing_collection")
-        row3 = col2.row()
-        row3.prop(props, "remove_temp")
-        row3.prop(props, "keep_final")
-        col2.prop(props, "temp_folder")
-        row5 = col2.row()
-        row5.prop(props, "open_console")
-        row5.prop(props, "no_popups")
-        col2.separator()
+        col_2 = optionsbox_2.column(align=True)
+        row_3 = col_2.row()
+        row_3.prop(props, "collection_name_override")
+        row_3.prop(props, "reuse_existing_collection")
+        row_4 = col_2.row()
+        row_4.prop(props, "open_console")
+        row_4.prop(props, "no_popups")
+        col_2.separator()
 
 class GR2_PT_Importer_ShaderPanel(Panel):
     bl_label = "GR2 Importer"
@@ -280,8 +261,8 @@ class GR2_OT_Importer_Run_Import(Operator):
             inputs = [props.file_1, props.file_2]
         
         settings = {"collection_name":props.collection_name_override, "import_type":props.import_type, 
-                    "custom_bones":props.use_custom_bone_obj, "custom_bone_obj":props.custom_bone_obj, "scale_custom_bone":props.scale_custom_bone,
-                    "remove_all_temp":props.remove_temp, "keep_final":props.keep_final, "fix_bones":props.fix_bones, "show_axes":props.show_axes,
+                    "custom_bones":props.use_custom_bone_obj, "custom_bone_obj":props.custom_bone_obj, 
+                    "scale_custom_bone":props.scale_custom_bone, "fix_bones":props.fix_bones, "show_axes":props.show_axes,
                     "open_console":props.open_console, "reuse_existing_collection":props.reuse_existing_collection}
         
         from . import (import_gr2_for_blender5)
