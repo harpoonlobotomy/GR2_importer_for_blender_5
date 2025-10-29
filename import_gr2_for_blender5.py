@@ -1,21 +1,17 @@
 # ADDON VERSION
 
-#changing the name: GR2 Importer 2025, instead of 'GR2 Importer for Blender 5'. 
+#changing the name: GR2 Importer 2025, instead of 'GR2 Importer for Blender 5'. Well I would if I could make Github stop saying it's a new file.
 # #Shouldn't be too hard to make it backwards compatible with 4.3~, so a year just to indicate 'this is modern' feels better than a specific blender release.
 
 # No export functionality at all yet, may implement it later but I only need import for myself so that's my focus.
 #  -- harpoon
-  
+
 # 25/10/2025
 
 #import_list = [r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\Resources\Proxy_INTDEV_A.GR2", r"F:\test\gltf_tests\rpremixed anim and skel as skel to mesh.gr2", r"F:\test\gltf_tests\randompeaceintdev defaults copyskel.gr2", r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2", r"F:\test\gltf_tests\random_peace_to_intdev_then_intdev_cin_merged_with_the_combined_copy_skel.gr2", r"F:\test\gltf_tests\random_peace_to_intdev_then_intdev_cin_merged_with_the_combined.gr2", r"F:\test\gltf_tests\random_peace_with_intdev_cin.gr2", 
 #r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\OwlBear\OWLBEAR_Cub_Rig\_Construction\Owlbear_Cub_Rig_DFLT_CINE_Curious_HeadTilt_01.GR2", r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\OwlBear\OWLBEAR_Cub_Base.GR2", r"F:\test\gltf_tests\owlbear_mesh.dae", r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Rig\INTDEV_Rig_DFLT_IDLE_Random_Peace_01.GR2", r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2", r"F:\BG3 Extract PAKs\PAKs\Models\Generated\Public\Shared\Assets\Characters\_Models\_Creatures\Intellect_Devourer\Resources\INTDEV_CIN.GR2"]
 
-#file_to_import = r"F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2"
-
-#inputs = None, None#armaturepath, file_to_import
-
-version = "0.65" # fixed custom bone scaling and bone orientation bug
+version = "0.66" # fixed the bulk import creating one collection per anim if the intended collection was hidden
 
 json_output = False
 jsonout_file = f"F:\\test\\gr2_metadata.json" #None
@@ -30,11 +26,6 @@ from pathlib import Path
 divineexe = r"F:\Blender\Addons etc\Packed\Tools\Divine.exe"
 divinedir = str(Path(divineexe).parent)
 rootreader = r"D:\Git_Repos\GR2_importer_for_blender_5\rootreader\bin\Debug\net8.0\rootreader.exe"
-
-global temp_files_final, temp_files # shouldn't need to be global. Fix this later.
-
-temp_files = list()
-temp_files_final = list()
 
 status_definitions = {
     00: "File does not exist",
@@ -225,7 +216,7 @@ def mass_metadata(input_file_list): # doesn't work with the addon
     if json_output:
         import json
         with open(jsonout_file, "w+") as f:
-            json.dump(metadata_dict, f, indent=2)
+            json.dump(metadata_dict, f, indent=2)     
 
 ### FILE CONVERSION ###
 def conform_to_armature(filepath, armaturepath):
@@ -279,9 +270,8 @@ def convert_to_GLB(temppath, fromtype):
     #        { "apply-basis-transforms", true },
     #        { "mirror-skeletons", false },
     try: ### mirror skeletons helps, at least the leg bones face the way they did in the collada importer.
-        subprocess.run(f'"{divineexe}" --loglevel warn -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o glb -a convert-model -e flip-uvs mirror-skeletons=true y-up-skeleton=false')
+        subprocess.run(f'"{divineexe}" --loglevel warn -g bg3 -s "{temppath}" -d "{temppath2}" -i {fromtype} -o glb -a convert-model -e flip-uvs mirror-skeletons=true')
         if check_file_exists(f"Conversion from {fromtype} to glb", temppath2):
-            temp_files_final.append(temppath2)
             print(f"Conversion from {fromtype} to .glb was successful.")
         return temppath2
     except Exception as e:
@@ -292,16 +282,13 @@ def GR2_to_DAE_to_GLB(filepath, ext):
     dae_path = convert_to_DAE(filepath, ext)
     if dae_path is not None and check_file_exists("dae conversion", dae_path):
         glb_path = convert_to_GLB(dae_path, "dae")
-        temp_files.append(dae_path)
         if glb_path is not None and check_file_exists("glb conversion from dae", glb_path):
-            temp_files_final.append(glb_path)
             return glb_path
         print("glb conversion from DAE failed. Aborting import.")
         return None
 
 def attempt_conversion(filepath, armaturepath):
 # I want to add a json output for conversion. The start files/types, successes and failures. Should make it far clearer to find the patterns of what succeeds/fails if I don't have to remember across runs.
-# Really want to figure out why that one Owlbear fails, etc.
     anim_or_static = "static"
     has_anim = [4,41,42,43,5,7]
     
@@ -344,14 +331,12 @@ def attempt_conversion(filepath, armaturepath):
             print("Armature contains more than just a skeleton. May fail.")
         combined_path = conform_to_armature(filepath, armaturepath)
         if check_file_exists("attemptimport: combined path", combined_path):
-            temp_files.append(combined_path)
             print("Combined GR2 file created successfully. Updated metadata check:")
             new_status, _, _ = metadata_func(combined_path, armaturepath, False)
             if new_status in [5, 7]:
                 print("Attempt direct conversion of armature + anim to glb.")
                 glb_path = convert_to_GLB(combined_path, get_filename_ext(combined_path)[2])
                 if glb_path:
-                    temp_files_final.append(glb_path)
                     return glb_path, "animation"
             print("Merging of animation + armature did not result in a file with both animation and armature. Will fail.")
             return glb_path, anim_or_static
@@ -385,6 +370,32 @@ def attempt_conversion(filepath, armaturepath):
     else:
         print(f"Anything left at the end of this function: {status}, {filename}")
 
+def get_collection(settings, trimmed_name): 
+
+    specified_collection = settings.get("collection_name")
+    reuse_existing_collection = settings.get("reuse_existing_collection")
+
+    if specified_collection or reuse_existing_collection:
+        test = bpy.data.collections.get(trimmed_name)
+        if test:
+            print(f"Existing collection found with this name: {trimmed_name}.")
+            collection = test
+
+    if not collection or (collection and not reuse_existing_collection):
+        collection = bpy.data.collections.new(trimmed_name)
+    try:
+        bpy.context.scene.collection.children.link(collection)  ## NOTE: Will fail if the collection is excluded from the view layer. Even if it passed test.
+    except:
+        vl_collections = bpy.context.view_layer.layer_collection.children
+        for coll in vl_collections:
+            if coll.name == collection.name:
+                print("Confirmed: collection exists in view layer.")
+                if coll.exclude == True:
+                    print("Collection excluded. Creating new collection.")
+                    collection = bpy.data.collections.new(trimmed_name)
+                    bpy.context.scene.collection.children.link(collection)
+    return collection
+
 ###  IMPORT ###
 def import_glb(filename, directory, existing_objects):
 
@@ -402,54 +413,32 @@ def import_glb(filename, directory, existing_objects):
         return None
     return new_objects
 
-def setup_for_import(filepath, settings, armaturepath):
+def setup_for_import(filepath, settings, anim_coll):
     
     _, filename, _ = get_filename_ext(filepath)
     collection = None
 
     specified_collection = settings.get("collection_name")
-    reuse_existing_collection = settings.get("reuse_existing_collection")
     
     if specified_collection and specified_collection != "":
         trimmed_name = specified_collection
     else:
         import_type = settings.get("import_type")
         if import_type == "bulk_anim":
-            armature_name = get_filename_ext(armaturepath)[1]
-            trimmed_name = armature_name.split(".")[0]
+            trimmed_name = anim_coll
             specified_collection = True # keeps them all in one collection
         else:
             trimmed_name = filename.split(".")[0]
 
-    if specified_collection or reuse_existing_collection: ## Add the option to import to selected/active collection, and/or named collection in the UI once it exists.
-        test = bpy.data.collections.get(trimmed_name)
-        if test:
-            print(f"Existing collection found with this name: {trimmed_name}.")
-            collection = test
-
-    #print(f"Collection: {collection}")
-    if not collection or (collection and not reuse_existing_collection):
-        collection = bpy.data.collections.new(trimmed_name)
-        #print(f"Collection: {collection}")
-
-    try:
-        bpy.context.scene.collection.children.link(collection)  ## NOTE: Will fail if the collection is excluded from the view layer. Even if it passed test.
-    except:
-        vl_collections = bpy.context.view_layer.layer_collection.children ### Okay. This needs a cleanup but works, at least in this specific case. If the named one is not excluded, it uses that. If it is excluded (should also check for visibility potentially, too), it makes a new collection and uses that.
-        for coll in vl_collections:
-            if coll.name == collection.name:
-                #print("Confirmed: collection exists in view layer.")
-                if coll.exclude == True:
-                    #print("Collection excluded. Creating new collection.")
-                    collection = bpy.data.collections.new(trimmed_name)
-                    bpy.context.scene.collection.children.link(collection)
-        pass
-
+    new_collection = get_collection(settings, trimmed_name)
+    
+    collection = new_collection
     layer_collection = bpy.context.view_layer.layer_collection.children[collection.name] ## this will fail if the collection isn't linked to the view layer.
     bpy.context.view_layer.active_layer_collection = layer_collection
     existing_objects = set(bpy.context.scene.objects)
 
     return existing_objects
+
 
 ### POST-IMPORT ###
 def cleanup(new_objects, status, anim_filename, settings):
@@ -565,9 +554,10 @@ def cleanup(new_objects, status, anim_filename, settings):
                         parent_obj = context.get(parent)
                         childhead = entry.get("head_pos")
                         #p2 = parent_obj.head ## i have these here to check for relative length, so if a child is too far away, it doesn't stretch the parent bone. Currently not implemented though.
+                        #checked the length and everything is as it should be.
                         
                         if (childhead - parent_obj.head).length <= EPSILON:
-                            print(f"Cannot move parent tail for {bone.name}; child's head is at parent's head position")
+                            pass#print(f"Cannot move parent tail for {bone.name}; child's head is at parent's head position")
                         else:
                             parent_obj.tail = childhead
                         if bone.name in track_bones:
@@ -575,7 +565,7 @@ def cleanup(new_objects, status, anim_filename, settings):
                             for key, value in entry.items():
                                 print(key, value)
 
-                from mathutils import Quaternion, Vector
+                from mathutils import Quaternion
                 counter = 0
                 no_movement = []
                 bone_angle_dict = {}
@@ -584,10 +574,10 @@ def cleanup(new_objects, status, anim_filename, settings):
                     if entry.get("new_tail_pos") == entry.get("tail_pos"):
                         no_movement.append(name)
             
-                print(f"Total of {counter} bones.")#, {len(no_movement)} did not move. `({no_movement})`")   
+                print(f"Total of {counter} bones.")
                 for bone in no_movement:
                     parent = bone_dict[bone].get("parent")
-                    if bone in donotmove_bones or not parent: #better?
+                    if bone in donotmove_bones or not parent: #" or "dummy" in bone.lower() " ?  # currently I don't need donotmove_bones because Root_M doesn't have a parent, but leaving it there for edge cases later. Potentially add control bones.
                         continue
                     parenthead = bone_dict[parent].get("head_pos")
                     parenttail = bone_dict[parent].get("tail_pos")
@@ -658,26 +648,33 @@ def cleanup(new_objects, status, anim_filename, settings):
     return armature_list
 
 ### SET-UP ###
-def set_up_bulk_convert(armaturepath, anim_dir, settings):
+def set_up_bulk_convert(armaturepath, anim_dir, settings): ## If the bulk import's collection exists but is hidden, it creates a new collection per armature. Need to fix.
 
     # testing armature: F:\BG3 Extract PAKs\PAKs\Models\Public\Shared\Assets\Characters\_Anims\_Creatures\Intellect_Devourer\INTDEV_Base.GR2
     # testing dir: #  F:\test\gltf_tests\raw_intdev_anims
-    print("Warning: May take a while if there are many files to convert.")
-    imported_anims = [f"Armature used: {get_filename_ext(armaturepath)[1]}"]
     import os
+    print("Warning: May take a while if there are many files to convert.")
+    armature_name = get_filename_ext(armaturepath)[1]
+    imported_anims = [f"Armature used: {armature_name}"]
+
     test_list = os.listdir(anim_dir)
     print(f"Test list: {test_list}")
+    
+    trimmed_name = armature_name.split(".")[0] 
+
+    bulk_collection = get_collection(settings, trimmed_name)
+
     for anim in test_list:
         print(f"Anim in test list: {anim}")
         filepath = anim_dir + "\\" + anim
         if check_file_exists("testing animation file before bulk conversion", filepath):
-            anim_file = import_process(filepath, armaturepath, settings)
+            anim_file = import_process(filepath, armaturepath, settings, bulk_collection.name)
             imported_anims.append(anim_file)
         else:
             print("No animation file(s) found.")
     return imported_anims
 
-def import_process(file_to_import, armaturepath, settings):
+def import_process(file_to_import, armaturepath, settings, anim_coll=None):
 
     print(f"About to start conversion: file_to_import = {file_to_import}, armaturepath = {armaturepath}")
     if file_to_import is not None:
@@ -685,7 +682,7 @@ def import_process(file_to_import, armaturepath, settings):
         converted, status = attempt_conversion(file_to_import, armaturepath)
         if converted:
             directory, filename, _ = get_filename_ext(converted)
-            existing_objects = setup_for_import(file_to_import, settings, armaturepath)
+            existing_objects = setup_for_import(file_to_import, settings, anim_coll)
             imported = import_glb(filename, directory, existing_objects)
 
             if imported:
@@ -806,7 +803,5 @@ def run(mode, inputs, settings=None):
     if mode == "import":
         [file_1, file_2] = inputs
         file_list = main(file_1, file_2, settings)
-        print(f"Temp files: {temp_files}")
-        print(f"Temp files final: {temp_files_final}")
         return file_list
     

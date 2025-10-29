@@ -2,12 +2,16 @@
 
 
 # CURRENT:
+	Version 0.66
+	  * Removed temp file mentions from import script
+	  * Fixed the bulk import creating one collection per anim if the intended collection was hidden; now it creates one new collection (suffixed) and uses that for all.
+          ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ 
+	  
 	Version 0.65
 	  * Fixed bone scaling and custom bones. (Custom bones default to icospheres if not otherwise selected.)
 	  * Fixed an issue where the bone orientation fix would disappear control bones.
 	  * Updated the UI panel to make it a bit more organised.
 	  * Removed temp file options, will look to reimplement later.	
-          ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ ~~ 
 		  
 	Version 0.6:
 	  (* Made so many little commmits on the test branch, but then merged commits instead of squashing so I may as well have done them on the main branch from the start. Ah well.)
