@@ -1,15 +1,11 @@
-# ADDON VERSION
-
-#changing the name: GR2 Importer 2025, instead of 'GR2 Importer for Blender 5'. Well I would if I could make Github stop saying it's a new file.
-# #Shouldn't be too hard to make it backwards compatible with 4.3~, so a year just to indicate 'this is modern' feels better than a specific blender release.
-
+# for blender 5.0+
 # No export functionality at all yet, may implement it later but I only need import for myself so that's my focus.
 #  -- harpoon
 
-# 25/10/2025
+# 31/10/2025
 
-version = "0.7" # fixed the bulk import creating one collection per anim if the intended collection was hidden, removed mass metadata, just can't see it being used. 
-                # set the divine/rreader paths in addon prefs instead of hardcode.
+version = "0.7.1" # fixed the collections again, had an issue where it would always create a collection for the armature name even when another name was specified and used.
+
 import bpy
 from addon_utils import check, enable
 import re
@@ -53,9 +49,7 @@ def initial_setup(mode, settings):
         if not is_console_visible():
             bpy.ops.wm.console_toggle()
 
-
 #--- Check required files exist. --- #
-
     divine = settings.get("divine_path")
     rreader = settings.get("rootreader_path")
     div_state = rr_state = None
@@ -83,7 +77,7 @@ def initial_setup(mode, settings):
         default, enabled = check("io_scene_gltf2")
         if not enabled:
             try:
-                enable("io_scene_gltf2", default_set=True, persistent=True)
+                enable("io_scene_gltf2", default_set=True, persistent=True) # is this allowed in blender addons? Not sure you're allowed to do this. Might jsut have to make it a warning.
             except Exception as e:
                 print(f"Failed to enable glTF native importer: {e}")
                 print("Please enable the 'glTF 2.0 Format' addon manually in Blender preferences and try again.")
@@ -142,8 +136,7 @@ def get_metadata(filepath, printme):
             meshes = 1
         if "Animations" in root_data and root_data.get("Animations") is not None:
             animations = 1
-        if "GR2Tag" in root_data and root_data.get("GR2Tag") is not None:
-            extra_data.update({"GR2Tag": root_data.get('GR2Tag')})
+        extra_data.update({"GR2Tag": root_data.get('GR2Tag')}) # assuming it's always valid. Believe so.
         extra_data.update({"Internal_Filename": root_data.get('FromFileName')})
         return meshes, armatures, animations, extra_data
     
@@ -180,7 +173,7 @@ def metadata_func(input_file, armaturepath=None, printme=True):
         if (skel_meshes, skel_armatures, skel_animations) == (0, 0, 1):
             return 4, extra_data, filename
     
-    elif armaturepath is not None and not check_file_exists("metadata: armature path", armaturepath): # this should have caught the default text but it didn't.
+    elif armaturepath is not None and not check_file_exists("metadata: armature path", armaturepath): # this should have caught the default text but it didn't. Why?
         armaturepath = None
         print_me(printme, f"Armature path `{filename}` is not a valid file. Ignoring.")
 
@@ -359,62 +352,55 @@ def attempt_conversion(filepath, armaturepath):
     else:
         print(f"Anything left at the end of this function: {status}, {filename}")
 
-def get_collection(specified_collection, settings, trimmed_name, state):  ## if 'reuse collection' is off and the target coll is hidden, it creates new collection for each anim.
+def get_collection(settings, trimmed_name, state):
 
     collection = None
     reuse_existing_collection = settings.get("reuse_existing_collection")
 
-    #print(f"STATE: {state}, trimmed name: {trimmed_name}")
-    if specified_collection:
+    print(f"STATE: {state}, trimmed name: {trimmed_name}")
+    if reuse_existing_collection or state == "bulk_anim":
         test = bpy.data.collections.get(trimmed_name)
         if test:
-            #print(f"Test: {test}")
-            if reuse_existing_collection or state == "bulk_anim":
-                #print(f"Existing collection found with this name: {trimmed_name}.")
-                collection = test
-        else:
-            print#(f"Failed collection test. Trimmed name: {trimmed_name}. bpy.data.collections.get(trimmed_name): {bpy.data.collections.get(trimmed_name)}")
+            collection = test
 
-    if not collection or (collection and not specified_collection) or state == "setup": #maybe this stops it forcing new with hidden target coll for bulk anim
+    if not collection or (collection and not reuse_existing_collection and state == "setup"):
         collection = bpy.data.collections.new(trimmed_name)
-        print(f"New collection: {collection.name}")
-    try:
-        bpy.context.scene.collection.children.link(collection)  ## NOTE: Will fail if the collection is excluded from the view layer. Even if it passed test.
-    except:
-        vl_collections = bpy.context.view_layer.layer_collection.children
-        for coll in vl_collections:
-            if coll.name == collection.name:
-                print("Confirmed: collection exists in view layer.")
-                if coll.exclude == True:
-                    print("Collection excluded. Creating new collection.")
-                    collection = bpy.data.collections.new(trimmed_name)
-                    bpy.context.scene.collection.children.link(collection)
 
-    #print(f"Returning {collection.name}")
+    if collection:
+        try:
+            bpy.context.scene.collection.children.link(collection)  ## NOTE: Will fail if the collection is excluded from the view layer. Even if it passed test.
+        except:
+            vl_collections = bpy.context.view_layer.layer_collection.children
+            for coll in vl_collections:
+                if coll.name == collection.name:
+                    print(f"Confirmed: collection {coll.name} exists in view layer.")
+                    if coll.exclude == True:
+                        print(f"Collection {coll.name} excluded. Creating new collection.")
+                        collection = bpy.data.collections.new(trimmed_name)
+                        bpy.context.scene.collection.children.link(collection)
+
     return collection
 
 def setup_for_import(filepath, settings, anim_coll):
     
     _, filename, _ = get_filename_ext(filepath)
     collection = None
-
+    import_type = settings.get("import_type")
     specified_collection = settings.get("collection_name")
     
-    if specified_collection and specified_collection != "":
-        trimmed_name = specified_collection
+    if import_type == "bulk_anim":
+        trimmed_name = anim_coll
+        specified_collection = True
+    elif (specified_collection and specified_collection != ""):
+        trimmed_name = specified_collection   
     else:
-        import_type = settings.get("import_type")
-        if import_type == "bulk_anim":
-            trimmed_name = anim_coll
-            specified_collection = True
-            #print(f"Trimmed name / anim coll: {trimmed_name} / {anim_coll}")
-        else:
-            trimmed_name = filename.split(".")[0]
+        trimmed_name = filename.split(".")[0]
 
-    new_collection = get_collection(specified_collection, settings, trimmed_name, "bulk_anim")
+    new_collection = get_collection(settings, trimmed_name, import_type) # uses the preset collection name to stop it producing too many collections during bulk import
     
     collection = new_collection
-    layer_collection = bpy.context.view_layer.layer_collection.children[collection.name] ## this will fail if the collection isn't linked to the view layer.
+    print(f"Collection.name: {collection.name}")
+    layer_collection = bpy.context.view_layer.layer_collection.children[collection.name] ## this will fail if the collection isn't linked to the view layer (which is why get_collection exists).
     bpy.context.view_layer.active_layer_collection = layer_collection
     existing_objects = set(bpy.context.scene.objects)
 
@@ -424,7 +410,6 @@ def setup_for_import(filepath, settings, anim_coll):
 def import_glb(filename, directory, existing_objects):
 
     filename = filename + ".glb" if not filename.lower().endswith((".glb", ".gltf")) else filename
-    #print("filepath, directory in import_glb: ", filename, directory)
     try:
         bpy.ops.import_scene.gltf(filepath=filename, directory=directory, files=[{"name":filename}], loglevel=20)
     except Exception as e:
@@ -449,7 +434,7 @@ def cleanup(new_objects, status, anim_filename, settings):
         if item not in lod_objects:
             non_lod.append(item)
 
-    for obj in lod_objects:
+    for obj in lod_objects: # should be an option instead of mandatory. Will add that today.
         bpy.data.objects.remove(obj, do_unlink=True)
 
     print({'INFO'}, f"Deleted {len(lod_objects)} LOD mesh{'es' if len(lod_objects) != 1 else ''}")
@@ -460,11 +445,16 @@ def cleanup(new_objects, status, anim_filename, settings):
     excess_icospheres = []
     
     for obj in bpy.data.collections["glTF_not_exported"].all_objects:
-        if obj.name == "Icosphere":
+        if obj.name == "Icosphere" or len(bpy.data.collections["glTF_not_exported"].all_objects) == 1: # stops it freaking out if the last icosphere left has the wrong name. Not ideal but okay for placeholder.
             primary = obj
         else:
-            excess_icospheres.append(obj)
+            excess_icospheres.append(obj)   
 
+    emp_dict = {}
+    for obj in non_lod:
+        if obj.type == "EMPTY": # have to run this first before any bones have a chance  to move.
+            emp_dict.update({obj.name: {"name": obj.name, "obj":obj, "location": obj.matrix_world.translation.copy()}})
+    
     armature_list = []
     bone_dict = {}
     for obj in non_lod:
@@ -565,7 +555,6 @@ def cleanup(new_objects, status, anim_filename, settings):
                     if entry.get("new_tail_pos") == entry.get("tail_pos"):
                         no_movement.append(name)
             
-                #print(f"Total of {counter} bones.")
                 for bone in no_movement:
                     parent = bone_dict[bone].get("parent")
                     if bone in donotmove_bones or not parent:
@@ -624,15 +613,22 @@ def cleanup(new_objects, status, anim_filename, settings):
 
             obj.name = anim_filename[1].split(".")[0]
 
-            if status != "animation": # I want to implement retargeting directly if I can, but the retargeter I'm used to doesn't work on 5.0 yet and animation seems to be hit-and-miss in the current release version. So for now we just don't apply the fix to anims.
-                if settings.get("fix_bones"):
-                    fix_bone_orientation()
+            if status != "animation" and settings.get("fix_bones"): # I want to implement retargeting directly if I can, but the retargeter I'm used to doesn't work on 5.0 yet and animation seems to be hit-and-miss in the current release version. So for now we just don't apply the fix to anims.
+                fix_bone_orientation()
 
     for ico in excess_icospheres:
         bpy.data.objects.remove(ico,do_unlink=True)
 
     bpy.ops.object.mode_set(mode='OBJECT')
 
+    if status != "animation" and settings.get("fix_bones"): # this will have to change is full object reorientation comes into play. But that should be done after this, if so. Or before; either way will be fine.
+        for empty in emp_dict.keys(): 
+            orig_loc = emp_dict.get(empty).get("location")
+            empty_object = emp_dict.get(empty).get("obj")
+            global_coord = empty_object.matrix_world.translation
+            if orig_loc != global_coord:
+                empty_object.matrix_world.translation = orig_loc # works
+        
     for item in armature_list:
         print(f"Imported:  {item.name}")
 
@@ -647,11 +643,14 @@ def set_up_bulk_convert(armaturepath, anim_dir, settings):
     imported_anims = [f"Armature used: {armature_name}"]
     test_list = os.listdir(anim_dir)
     print(f"Test list: {test_list}")
-    
-    trimmed_name = armature_name.split(".")[0] 
-    #print(f"Trimmed name for bulk collection: {trimmed_name}")
-    bulk_collection = get_collection(True, settings, trimmed_name, "setup")
-    #print(f"bulk collection name: {bulk_collection.name}")
+    specified = settings.get("collection_name")
+    if specified and specified != "":
+        trimmed_name = specified
+    else:
+        trimmed_name = armature_name.split(".")[0] 
+    print(f"Trimmed name for bulk collection: {trimmed_name}")
+    bulk_collection = get_collection(settings, trimmed_name, "setup")
+    print(f"bulk collection name: {bulk_collection.name}")
     for anim in test_list:
         #print(f"Anim file in provided directory: {anim}")
         filepath = anim_dir + "\\" + anim
